@@ -1,0 +1,59 @@
+name: Upstream update
+
+# Once a day, check TEESimulator-RS / PlayIntegrityFork for a newer release.
+# If anything changed, patch the pinned versions in build.sh and open a PR.
+# Manual run via "Run workflow" supported too.
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # 06:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream releases
+        id: check
+        run: |
+          set +e
+          ./scripts/update-upstream.sh --apply
+          code=$?
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          if [ $code -eq 0 ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          elif [ $code -eq 11 ]; then
+            echo "changed=true"  >> "$GITHUB_OUTPUT"
+          else
+            exit $code
+          fi
+
+      - name: Build with new pins
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          sudo apt-get install -y zip unzip
+          ./build.sh --clean
+
+      - name: Open PR
+        if: steps.check.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: bump upstream TEESimulator-RS / PlayIntegrityFork"
+          title: "chore: bump upstream pins"
+          branch: chore/upstream-bump
+          body: |
+            Automated upstream bump. The pinned TEESimulator-RS and/or
+            PlayIntegrityFork versions in `build.sh` have been updated to
+            whatever GitHub `/releases/latest` returns today.
+
+            Verify locally with:
+            ```
+            ./build.sh --clean
+            ```
+          delete-branch: true

@@ -1,0 +1,85 @@
+#!/system/bin/sh
+# Fetch the keybox status (e.g. "🟢🟢🟢") from the project's keybox mirror
+# and prepend it to module.prop's description line so KSU/APatch/MMRL show
+# the current health at a glance.
+#
+# Format: "description=🟢🟢🟢 <base>"   ← status first, then a space, then base
+# Base text is the canonical line from description.txt (so we don't have
+# to parse-and-strip arbitrary emoji prefixes — single source of truth).
+#
+# Called from action.sh (every press) and service.sh (hourly + first boot).
+# Idempotent: only rewrites module.prop if the prefix actually changed.
+
+URL="https://botkey.netlify.app/status"
+MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
+PROP="$MODPATH/module.prop"
+BASE_FILE="$MODPATH/description.txt"
+CONFIG_DIR=/data/adb/tricky_store
+NO_AUTO_FLAG="$CONFIG_DIR/no_auto_indicator"
+TIMEOUT=8
+
+# mode: "manual" (action button — always writes module.prop)
+#       "auto"   (service.sh hourly — skips write if NO_AUTO_FLAG present)
+#       "strip"  (WebUI indicator OFF — rewrite description to base, no fetch)
+MODE="${1:-auto}"
+
+[ -f "$PROP" ] || exit 1
+[ -f "$BASE_FILE" ] || exit 1
+
+# Strip mode: restore description= to the canonical base text from
+# description.txt, removing any status prefix. Used by the WebUI when the
+# user disables the indicator — they expect the emoji prefix to vanish from
+# the module list immediately, not on the next reboot.
+if [ "$MODE" = "strip" ]; then
+    base=$(head -1 "$BASE_FILE" | tr -d '\r\n')
+    [ -z "$base" ] && exit 4
+    want="description=${base}"
+    have=$(grep -m1 '^description=' "$PROP")
+    [ "$have" = "$want" ] && exit 0
+    tmp="${PROP}.tmp"
+    awk -v new="$want" '
+        !done && /^description=/ { print new; done=1; next }
+        { print }
+    ' "$PROP" > "$tmp" && mv -f "$tmp" "$PROP"
+    exit 0
+fi
+
+# Auto path + user opted out of indicator → exit without touching module.prop.
+# Hourly fp/keybox checks still happen in service.sh; only the visible 🟢
+# prefix is gated. Manual action presses always update regardless.
+if [ "$MODE" != "manual" ] && [ -f "$NO_AUTO_FLAG" ]; then
+    exit 0
+fi
+
+BB=""
+for p in /data/adb/modules/busybox-ndk/system/*/busybox /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox; do
+    [ -f "$p" ] && BB="$p" && break
+done
+
+if command -v curl >/dev/null 2>&1; then
+    fetch="curl -fsSL --max-time $TIMEOUT"
+elif [ -n "$BB" ]; then
+    fetch="$BB wget -q -T $TIMEOUT -O -"
+elif command -v wget >/dev/null 2>&1; then
+    fetch="wget -q -T $TIMEOUT -O -"
+else
+    exit 2
+fi
+
+new=$($fetch "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+[ -z "$new" ] && exit 3
+
+base=$(head -1 "$BASE_FILE" | tr -d '\r\n')
+[ -z "$base" ] && exit 4
+
+want="description=${new} ${base}"
+have=$(grep -m1 '^description=' "$PROP")
+
+[ "$have" = "$want" ] && exit 0
+
+# Atomic rewrite: produce full file in tmp, swap in.
+tmp="${PROP}.tmp"
+awk -v new="$want" '
+    !done && /^description=/ { print new; done=1; next }
+    { print }
+' "$PROP" > "$tmp" && mv -f "$tmp" "$PROP"

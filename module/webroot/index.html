@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>AlwaysStrong</title>
+<style>
+:root{
+  --bg:#fafafa; --fg:#0a0a0a; --muted:#8a8a8e;
+  --line:rgba(0,0,0,.06); --card:#ffffff;
+  --slider:#e3e3e8; --accent:#10b981; --accent-2:#059669;
+  --tg:#229ED9; --heart:#e0245e;
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 4px 12px rgba(0,0,0,.04);
+  --shadow-pop:0 8px 28px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#000; --fg:#f5f5f7; --muted:#7f7f86;
+    --line:rgba(255,255,255,.07); --card:#161618;
+    --slider:#2c2c2e; --accent:#34d399; --accent-2:#10b981;
+    --tg:#2AABEE;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 12px rgba(0,0,0,.18);
+    --shadow-pop:0 12px 32px rgba(0,0,0,.45),0 2px 8px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{
+  font:15px/1.45 -apple-system,system-ui,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  padding:28px 18px 40px;
+  padding-top:max(28px,env(safe-area-inset-top));
+  padding-bottom:max(40px,env(safe-area-inset-bottom));
+  padding-left:max(18px,env(safe-area-inset-left));
+  padding-right:max(18px,env(safe-area-inset-right));
+  max-width:520px;margin:0 auto;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+/* ---------------- header ---------------- */
+.hd{margin:0 0 28px;display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+h1{
+  margin:0;font-size:30px;font-weight:700;letter-spacing:-.028em;line-height:1;
+  background:linear-gradient(135deg,var(--fg) 30%,var(--accent) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.ver{
+  color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;
+  font-weight:500;padding:3px 8px;border-radius:6px;
+  background:var(--card);box-shadow:var(--shadow);
+}
+
+/* ---------------- status pill ---------------- */
+.status{
+  display:flex;align-items:center;justify-content:space-between;
+  margin:0 0 22px;padding:14px 16px;
+  background:var(--card);border-radius:14px;box-shadow:var(--shadow);
+  animation:rise .4s cubic-bezier(.2,.7,.2,1) both;
+}
+.status-l{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.status-dot{
+  width:8px;height:8px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 0 var(--accent);
+  animation:pulse 2.2s ease-out infinite;
+}
+.status-val{font-size:17px;letter-spacing:.06em;line-height:1}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}
+  70%{box-shadow:0 0 0 10px transparent}
+  100%{box-shadow:0 0 0 0 transparent}
+}
+
+/* ---------------- card + rows ---------------- */
+.lbl{
+  font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--muted);margin:0 0 8px 14px;font-weight:600;
+}
+.card{
+  background:var(--card);border-radius:16px;
+  box-shadow:var(--shadow);overflow:hidden;margin-bottom:22px;
+}
+.row{
+  display:flex;align-items:center;padding:13px 16px;min-height:58px;gap:13px;
+  transition:background .15s;
+}
+.row+.row{border-top:1px solid var(--line)}
+.row-ic{
+  width:30px;height:30px;flex-shrink:0;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);background:color-mix(in srgb,var(--muted) 8%,transparent);
+}
+.row-ic svg{width:17px;height:17px;display:block}
+.row-lbl{flex:1;min-width:0}
+.row-t{font-size:15px;font-weight:500;line-height:1.25}
+.row-s{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.3}
+
+/* toggle switch — iOS feel with bounce */
+.sw{position:relative;width:46px;height:28px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw .sl{
+  position:absolute;inset:0;background:var(--slider);
+  border-radius:28px;cursor:pointer;
+  transition:background .22s cubic-bezier(.2,.7,.2,1);
+}
+.sw .sl::before{
+  content:"";position:absolute;left:2px;top:2px;width:24px;height:24px;
+  background:#fff;border-radius:50%;
+  box-shadow:0 1px 2px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.12);
+  transition:transform .26s cubic-bezier(.34,1.56,.64,1);
+}
+.sw input:checked + .sl{background:var(--accent)}
+.sw input:checked + .sl::before{transform:translateX(18px)}
+[dir="rtl"] .sw input:checked + .sl::before{transform:translateX(-18px)}
+
+/* number input — invisible-until-edited feel */
+.int-wrap{display:flex;align-items:baseline;gap:5px}
+.int{
+  appearance:none;-webkit-appearance:none;-moz-appearance:textfield;
+  background:color-mix(in srgb,var(--muted) 8%,transparent);
+  border:0;color:var(--fg);
+  font:600 15px/1 inherit;font-family:inherit;font-variant-numeric:tabular-nums;
+  width:54px;padding:7px 8px;border-radius:8px;text-align:center;
+  transition:background .15s;
+}
+.int:focus{outline:0;background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.int::-webkit-inner-spin-button,
+.int::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.int-unit{color:var(--muted);font-size:13px}
+
+/* ---------------- language picker ---------------- */
+.lang-btn{
+  position:fixed;top:env(safe-area-inset-top,0);right:0;
+  margin:18px;width:38px;height:38px;border-radius:50%;
+  background:var(--card);border:0;color:var(--fg);
+  font-size:17px;cursor:pointer;line-height:1;padding:0;
+  box-shadow:var(--shadow);
+  -webkit-appearance:none;
+  transition:transform .15s,box-shadow .15s;
+  z-index:5;
+}
+.lang-btn:hover{box-shadow:var(--shadow-pop)}
+.lang-btn:active{transform:scale(.92)}
+.lang-pop{
+  position:fixed;top:64px;right:18px;
+  background:var(--card);border-radius:14px;
+  padding:6px 0;min-width:172px;max-height:70vh;overflow:auto;
+  box-shadow:var(--shadow-pop);
+  z-index:10;
+  animation:popin .18s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin:top right;
+}
+@keyframes popin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.lang-pop button{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;text-align:left;background:transparent;border:0;
+  color:var(--fg);padding:10px 16px;
+  font:14px/1.2 inherit;font-family:inherit;cursor:pointer;
+}
+.lang-pop button:hover{background:color-mix(in srgb,var(--muted) 10%,transparent)}
+.lang-pop button.active{color:var(--accent);font-weight:600}
+.lang-pop button.active::after{content:"✓";font-size:13px;opacity:.9}
+
+/* ---------------- footer ---------------- */
+.foot{
+  margin-top:30px;display:flex;justify-content:center;
+  align-items:center;gap:8px;flex-wrap:wrap;
+  animation:rise .5s cubic-bezier(.2,.7,.2,1) both;animation-delay:.2s;
+}
+.foot a{
+  display:inline-flex;align-items:center;gap:7px;
+  color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;
+  padding:8px 12px;border-radius:10px;
+  transition:color .14s,background .14s,transform .12s;
+}
+.foot a:hover{color:var(--fg);background:color-mix(in srgb,var(--muted) 8%,transparent)}
+.foot a:active{transform:scale(.96)}
+.foot a svg{width:15px;height:15px;flex-shrink:0;display:block}
+.foot a.tg svg{color:var(--tg)}
+.foot a.dn svg{color:var(--heart)}
+
+/* ---------------- mount animations ---------------- */
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.hd,.lbl,.card{animation:rise .4s cubic-bezier(.2,.7,.2,1) both}
+.lbl{animation-delay:.06s}
+.card{animation-delay:.10s}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    transition-duration:.001ms!important;
+  }
+}
+</style>
+</head>
+<body>
+
+<button id="langBtn" class="lang-btn" aria-label="Language">🌐</button>
+<div id="langPop" class="lang-pop" hidden></div>
+
+<div class="hd">
+  <h1>AlwaysStrong</h1>
+  <div class="ver" id="ver">—</div>
+</div>
+
+<div class="status" id="statusRow" hidden>
+  <span class="status-l">
+    <span class="status-dot" id="statusDot"></span>
+    <span data-i="status">Keybox status</span>
+  </span>
+  <span class="status-val" id="statusVal">—</span>
+</div>
+
+<div class="lbl" data-i="auto">Auto-update</div>
+<div class="card">
+
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12c0-3.866 3.134-7 7-7s7 3.134 7 7v1"/><path d="M12 9v4c0 1.105.895 2 2 2"/><path d="M9 18c.6-1 1-2.5 1-5"/><path d="M16 19c-.667-.667-1-2-1-4"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="fp_t">Fingerprint</div>
+      <div class="row-s" data-i="fp_s">Hourly Pixel Canary refresh</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="fp"><span class="sl"></span></label>
+  </div>
+
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="3.5"/><path d="m11 12 9-9"/><path d="m15 7 3 3"/><path d="m18 4 3 3"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="kb_t">Keybox</div>
+      <div class="row-s" data-i="kb_s">Hourly check, only writes if newer</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="kb"><span class="sl"></span></label>
+  </div>
+
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"/><path d="M16.5 7.5a6 6 0 0 1 0 9"/><path d="M7.5 16.5a6 6 0 0 1 0-9"/><path d="M19.5 4.5a10 10 0 0 1 0 15"/><path d="M4.5 19.5a10 10 0 0 1 0-15"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="ind_t">Status indicator</div>
+      <div class="row-s" data-i="ind_s">Show status prefix in description</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="ind"><span class="sl"></span></label>
+  </div>
+
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.5 8.5 8 9 4.5-.5 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="rs_t">Block ROM spoof</div>
+      <div class="row-s" data-i="rs_s">Disable PixelProps / pihooks engines</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="rs"><span class="sl"></span></label>
+  </div>
+
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="int_t">Check every</div>
+    </div>
+    <div class="int-wrap">
+      <input id="int" class="int" type="number" min="1" step="1" inputmode="numeric" value="60">
+      <span class="int-unit">min</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="foot">
+  <a class="tg" href="https://t.me/keyboxstrong" data-ext>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 17.6 9.61 14l7.5-6.78c.34-.31-.07-.46-.52-.19L7.74 12.85 3.74 11.6c-.86-.27-.87-.86.2-1.27L19.16 4.6c.71-.32 1.4.17 1.13 1.27L17.7 17.61c-.19.89-.72 1.1-1.46.69l-3.99-2.94-1.92 1.86c-.22.22-.41.41-.85.41-.43 0-.4-.2-.55-.6-.16-.42-.79-2.6-1.15-3.43z"/></svg>
+    <span>keyboxstrong</span>
+  </a>
+  <a class="tg" href="https://t.me/evokeroot" data-ext>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 17.6 9.61 14l7.5-6.78c.34-.31-.07-.46-.52-.19L7.74 12.85 3.74 11.6c-.86-.27-.87-.86.2-1.27L19.16 4.6c.71-.32 1.4.17 1.13 1.27L17.7 17.61c-.19.89-.72 1.1-1.46.69l-3.99-2.94-1.92 1.86c-.22.22-.41.41-.85.41-.43 0-.4-.2-.55-.6-.16-.42-.79-2.6-1.15-3.43z"/></svg>
+    <span>evokeroot</span>
+  </a>
+  <a class="dn" href="https://coindrop.to/evokerrr" data-ext>
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.35-7-10.5C5 7.5 7.5 5 10.5 5 12 5 12 6 12 6s0-1 1.5-1C16.5 5 19 7.5 19 10.5 19 16.65 12 21 12 21z"/></svg>
+    <span data-i="donate">Donate</span>
+  </a>
+</div>
+
+<script>
+const I={
+  en:{auto:"Auto-update",fp_t:"Fingerprint",fp_s:"Hourly Pixel Canary refresh",kb_t:"Keybox",kb_s:"Hourly check, only writes if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate"},
+  tr:{auto:"Otomatik güncelleme",fp_t:"Fingerprint",fp_s:"Her saat Pixel Canary'den çekilir",kb_t:"Keybox",kb_s:"Her saat kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış"},
+  ru:{auto:"Автообновление",fp_t:"Fingerprint",fp_s:"Ежечасно с Pixel Canary",kb_t:"Keybox",kb_s:"Ежечасно проверка, запись только если новее",status:"Статус keybox",ind_t:"Индикатор",ind_s:"Показывать префикс в описании",rs_t:"Блок ROM-спуфа",rs_s:"Отключить PixelProps / pihooks",int_t:"Интервал",donate:"Поддержать"},
+  es:{auto:"Actualización automática",fp_t:"Fingerprint",fp_s:"Refresco horario desde Pixel Canary",kb_t:"Keybox",kb_s:"Comprobación horaria, escribe solo si es nuevo",status:"Estado del keybox",ind_t:"Indicador",ind_s:"Mostrar prefijo de estado en la descripción",rs_t:"Bloquear ROM spoof",rs_s:"Desactivar PixelProps / pihooks",int_t:"Intervalo",donate:"Donar"},
+  pt:{auto:"Atualização automática",fp_t:"Fingerprint",fp_s:"Atualização horária do Pixel Canary",kb_t:"Keybox",kb_s:"Verificação horária, grava só se for novo",status:"Status do keybox",ind_t:"Indicador",ind_s:"Mostrar prefixo de status na descrição",rs_t:"Bloquear ROM spoof",rs_s:"Desativar PixelProps / pihooks",int_t:"Intervalo",donate:"Doar"},
+  de:{auto:"Auto-Update",fp_t:"Fingerprint",fp_s:"Stündliche Pixel-Canary-Aktualisierung",kb_t:"Keybox",kb_s:"Stündlich prüfen, nur bei Neuerem schreiben",status:"Keybox-Status",ind_t:"Statusanzeige",ind_s:"Statuspräfix in der Beschreibung",rs_t:"ROM-Spoof blockieren",rs_s:"PixelProps / pihooks deaktivieren",int_t:"Intervall",donate:"Spenden"},
+  fr:{auto:"Mise à jour auto",fp_t:"Fingerprint",fp_s:"Rafraîchissement horaire depuis Pixel Canary",kb_t:"Keybox",kb_s:"Vérification horaire, écrit seulement si plus récent",status:"Statut keybox",ind_t:"Indicateur",ind_s:"Afficher le préfixe d'état",rs_t:"Bloquer le spoof ROM",rs_s:"Désactiver PixelProps / pihooks",int_t:"Intervalle",donate:"Faire un don"},
+  it:{auto:"Aggiornamento automatico",fp_t:"Fingerprint",fp_s:"Aggiornamento orario da Pixel Canary",kb_t:"Keybox",kb_s:"Controllo orario, scrive solo se più recente",status:"Stato keybox",ind_t:"Indicatore",ind_s:"Mostra prefisso di stato",rs_t:"Blocca spoof ROM",rs_s:"Disattiva PixelProps / pihooks",int_t:"Intervallo",donate:"Dona"},
+  id:{auto:"Pembaruan otomatis",fp_t:"Fingerprint",fp_s:"Penyegaran tiap jam dari Pixel Canary",kb_t:"Keybox",kb_s:"Cek tiap jam, hanya tulis jika lebih baru",status:"Status keybox",ind_t:"Indikator",ind_s:"Tampilkan awalan status di deskripsi",rs_t:"Blokir spoof ROM",rs_s:"Nonaktifkan PixelProps / pihooks",int_t:"Interval",donate:"Donasi"},
+  vi:{auto:"Tự cập nhật",fp_t:"Fingerprint",fp_s:"Làm mới mỗi giờ từ Pixel Canary",kb_t:"Keybox",kb_s:"Kiểm tra mỗi giờ, chỉ ghi khi mới hơn",status:"Trạng thái keybox",ind_t:"Chỉ báo",ind_s:"Hiện tiền tố trạng thái trong mô tả",rs_t:"Chặn giả mạo ROM",rs_s:"Vô hiệu hóa PixelProps / pihooks",int_t:"Khoảng kiểm tra",donate:"Quyên góp"},
+  ar:{auto:"تحديث تلقائي",fp_t:"البصمة",fp_s:"تحديث كل ساعة من Pixel Canary",kb_t:"Keybox",kb_s:"فحص كل ساعة، يكتب فقط إذا كان أحدث",status:"حالة keybox",ind_t:"مؤشر الحالة",ind_s:"عرض بادئة الحالة في الوصف",rs_t:"حظر انتحال ROM",rs_s:"تعطيل PixelProps / pihooks",int_t:"التحقق كل",donate:"تبرع"},
+  zh:{auto:"自动更新",fp_t:"指纹",fp_s:"每小时从 Pixel Canary 刷新",kb_t:"Keybox",kb_s:"每小时检查，仅在更新时写入",status:"Keybox 状态",ind_t:"状态指示",ind_s:"在描述中显示状态前缀",rs_t:"屏蔽 ROM 伪装",rs_s:"禁用 PixelProps / pihooks",int_t:"检查间隔",donate:"捐赠"},
+  ja:{auto:"自動更新",fp_t:"フィンガープリント",fp_s:"Pixel Canaryから毎時更新",kb_t:"Keybox",kb_s:"毎時チェック、新しい場合のみ書き込み",status:"Keybox の状態",ind_t:"ステータス表示",ind_s:"説明にステータスプレフィックスを表示",rs_t:"ROM 偽装をブロック",rs_s:"PixelProps / pihooks を無効化",int_t:"チェック間隔",donate:"寄付"},
+  ko:{auto:"자동 업데이트",fp_t:"지문",fp_s:"매시간 Pixel Canary에서 새로고침",kb_t:"Keybox",kb_s:"매시간 확인, 새 것일 때만 기록",status:"Keybox 상태",ind_t:"상태 표시",ind_s:"설명에 상태 접두사 표시",rs_t:"ROM 스푸핑 차단",rs_s:"PixelProps / pihooks 비활성화",int_t:"확인 간격",donate:"후원"},
+  hi:{auto:"स्वतः अपडेट",fp_t:"फिंगरप्रिंट",fp_s:"हर घंटे Pixel Canary से ताज़ा",kb_t:"Keybox",kb_s:"हर घंटे जाँच, नया होने पर ही लिखें",status:"Keybox स्थिति",ind_t:"स्थिति संकेतक",ind_s:"विवरण में स्थिति उपसर्ग दिखाएं",rs_t:"ROM स्पूफ ब्लॉक करें",rs_s:"PixelProps / pihooks बंद करें",int_t:"हर बार जाँच",donate:"दान"},
+};
+const RTL=new Set(["ar","he","fa","ur"]);
+const NAMES={en:"English",tr:"Türkçe",ru:"Русский",es:"Español",pt:"Português",de:"Deutsch",fr:"Français",it:"Italiano",id:"Bahasa Indonesia",vi:"Tiếng Việt",ar:"العربية",zh:"中文",ja:"日本語",ko:"한국어",hi:"हिन्दी"};
+
+function pickLang(){
+  const saved=localStorage.getItem("lang");
+  if(saved && I[saved]) return saved;
+  const langs=[navigator.language,...(navigator.languages||[])];
+  for(const l of langs){
+    if(!l) continue;
+    const base=l.toLowerCase().split("-")[0];
+    if(I[base]) return base;
+  }
+  return "en";
+}
+const L=pickLang();
+const T=I[L];
+document.documentElement.lang=L;
+if(RTL.has(L)) document.documentElement.dir="rtl";
+document.querySelectorAll("[data-i]").forEach(el=>{
+  const k=el.dataset.i;
+  if(T[k]) el.textContent=T[k];
+});
+
+const langBtn=document.getElementById("langBtn");
+const langPop=document.getElementById("langPop");
+Object.keys(NAMES).filter(k=>I[k]).forEach(k=>{
+  const b=document.createElement("button");
+  b.textContent=NAMES[k];
+  if(k===L) b.className="active";
+  b.addEventListener("click",()=>{
+    localStorage.setItem("lang",k);
+    location.reload();
+  });
+  langPop.appendChild(b);
+});
+langBtn.addEventListener("click",e=>{
+  e.stopPropagation();
+  langPop.hidden=!langPop.hidden;
+});
+document.addEventListener("click",e=>{
+  if(!langPop.hidden && !langPop.contains(e.target)) langPop.hidden=true;
+});
+
+function ksuExec(cmd){
+  return new Promise(resolve=>{
+    if(typeof ksu==="undefined"||!ksu.exec){
+      resolve({errno:-1,stdout:"",stderr:"no bridge"});
+      return;
+    }
+    const cb="__cb"+Date.now()+Math.floor(Math.random()*1e6);
+    window[cb]=(errno,stdout,stderr)=>{
+      delete window[cb];
+      resolve({errno,stdout:stdout||"",stderr:stderr||""});
+    };
+    try{ ksu.exec(cmd,"{}",cb); }
+    catch(e){ delete window[cb]; resolve({errno:-1,stdout:"",stderr:String(e)}); }
+  });
+}
+
+// External-link opener for KSU/APatch WebView (which traps navigation
+// in the panel). MMRL respects normal <a> so we only fire am-intent
+// when the ksu bridge is present.
+function openExternal(url){
+  const safe=url.replace(/'/g,"'\\''");
+  if(typeof ksu!=="undefined" && ksu.exec){
+    ksuExec(`am start -a android.intent.action.VIEW -d '${safe}' >/dev/null 2>&1`);
+    return true;
+  }
+  return false;
+}
+document.querySelectorAll("a[data-ext]").forEach(a=>{
+  a.addEventListener("click",e=>{ if(openExternal(a.href)) e.preventDefault(); });
+});
+
+const CFG="/data/adb/tricky_store";
+const FP_FLAG=CFG+"/no_auto_fp";
+const KB_FLAG=CFG+"/no_auto_keybox";
+const IND_FLAG=CFG+"/no_auto_indicator";
+const RS_FLAG=CFG+"/no_rom_spoof_block";
+const INT_FILE=CFG+"/hourly_interval_sec";
+const MOD="/data/adb/modules/tricky_store";
+
+// flag absent = feature enabled
+async function readEnabled(path){
+  const r=await ksuExec(`[ -f "${path}" ] && echo 0 || echo 1`);
+  return r.stdout.trim()==="1";
+}
+async function writeEnabled(path,on){
+  await ksuExec(on?`rm -f "${path}"`:`mkdir -p "${CFG}" && touch "${path}"`);
+}
+
+async function loadStatus(){
+  const r=await ksuExec(`grep -m1 '^description=' "${MOD}/module.prop" 2>/dev/null | sed -e 's/^description=//' | awk '{print $1}'`);
+  const s=(r.stdout||"").trim();
+  if(s && /[🟢🔴🟡⚫⚪]/.test(s)){
+    document.getElementById("statusVal").textContent=s;
+    document.getElementById("statusRow").hidden=false;
+  } else {
+    document.getElementById("statusRow").hidden=true;
+  }
+}
+
+async function init(){
+  const v=await ksuExec(`grep '^version=' "${MOD}/module.prop" 2>/dev/null | cut -d= -f2-`);
+  document.getElementById("ver").textContent=(v.stdout.trim()||"v?");
+
+  await loadStatus();
+
+  const fp=document.getElementById("fp");
+  const kb=document.getElementById("kb");
+  const ind=document.getElementById("ind");
+  const rs=document.getElementById("rs");
+  const intInp=document.getElementById("int");
+  fp.checked=await readEnabled(FP_FLAG);
+  kb.checked=await readEnabled(KB_FLAG);
+  ind.checked=await readEnabled(IND_FLAG);
+  rs.checked=await readEnabled(RS_FLAG);
+  fp.addEventListener("change",e=>writeEnabled(FP_FLAG,e.target.checked));
+  kb.addEventListener("change",e=>writeEnabled(KB_FLAG,e.target.checked));
+  ind.addEventListener("change",async e=>{
+    await writeEnabled(IND_FLAG,e.target.checked);
+    // Off → ask status_fetch to restore description= to clean base text.
+    // On  → next auto/manual run will write the prefix back in.
+    if(!e.target.checked) await ksuExec(`sh "${MOD}/status_fetch.sh" strip`);
+    await loadStatus();
+  });
+  rs.addEventListener("change",e=>writeEnabled(RS_FLAG,e.target.checked));
+
+  const cur=await ksuExec(`cat "${INT_FILE}" 2>/dev/null`);
+  const curSec=parseInt((cur.stdout||"").trim(),10);
+  intInp.value=Number.isFinite(curSec)&&curSec>=60 ? Math.round(curSec/60) : 60;
+  const saveInterval=async()=>{
+    let m=parseInt(intInp.value,10);
+    if(!Number.isFinite(m)||m<1) m=60;
+    intInp.value=m;
+    await ksuExec(`mkdir -p "${CFG}" && echo ${m*60} > "${INT_FILE}"`);
+  };
+  intInp.addEventListener("blur",saveInterval);
+  intInp.addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
+}
+init();
+</script>
+
+</body>
+</html>

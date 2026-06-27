@@ -1,0 +1,24 @@
+# build artifacts
+build/
+out/
+*.zip
+*.bak
+
+# Rust / cargo-ndk per-target build cache (the actual ABI binaries we ship
+# live in native/*/prebuilt/ and ARE committed)
+native/**/target/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local Claude Code config — machine-specific paths + command history, not for sharing
+.claude/
+
+# scratch / temp
+tmp_*
+*.tmp
+*.log
+.aswebui.apk

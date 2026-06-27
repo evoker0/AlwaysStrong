@@ -1,0 +1,1 @@
+Strong Play Integrity in one drop-in module. TEE-Simulator-RS + PlayIntegrityFork bundled, hardware attestation + Pixel fingerprint kept fresh automatically.

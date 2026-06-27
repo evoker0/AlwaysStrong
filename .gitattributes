@@ -1,0 +1,18 @@
+# All shell/install files run on Android — they MUST be LF, never CRLF.
+# Force git to check them out with LF on every platform.
+*.sh         text eol=lf
+*.rule       text eol=lf
+module.prop  text eol=lf
+target.txt   text eol=lf
+daemon       text eol=lf
+update-binary    text eol=lf
+updater-script   text eol=lf
+
+# Native binaries / archives — never touch
+*.so         binary
+*.dex        binary
+*.zip        binary
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+keybox.xml   binary

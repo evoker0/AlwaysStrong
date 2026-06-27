@@ -1,0 +1,23 @@
+[package]
+name = "aswatcher"
+version = "1.0.0"
+edition = "2021"
+description = "AlwaysStrong package watcher — inotify-based target.txt refresh + Xposed exclusion + conflict scan"
+publish = false
+
+[[bin]]
+name = "aswatcher"
+path = "src/main.rs"
+
+[dependencies]
+inotify = { version = "0.10", default-features = false }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = false
+debug = false
+incremental = false
