@@ -36,12 +36,38 @@ echo "  $LINE"
 [ -x "$MODPATH/build_target_txt.sh" ] && \
     sh "$MODPATH/build_target_txt.sh" "$CONFIG_DIR/target.txt" >/dev/null 2>&1
 TGT_N=$(grep -cvE '^[[:space:]]*$' "$CONFIG_DIR/target.txt" 2>/dev/null)
-[ -x "$MODPATH/keybox_fetch.sh" ] && \
-    sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
+# Keybox: if we already hold a valid one, refresh it in the BACKGROUND so a
+# slow or unreachable mirror can't stall the Action (some networks reach
+# Google fine but not the keybox host). With no keybox yet, fetch synchronously
+# (still bounded by keybox_fetch's own wget timeout) because STRONG needs it now.
+if [ -x "$MODPATH/keybox_fetch.sh" ]; then
+    if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
+        sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1 &
+    else
+        sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
+    fi
+fi
 
-# --- autopif4: fetch a fresh Pixel fingerprint from Google (silent) -------
+# --- autopif4: fetch a fresh Pixel fingerprint from Google ----------------
+# autopif4 pulls the latest Pixel build from several Google hosts (developer.
+# android.com, flash.android.com, content-flashstation-pa.googleapis.com, ...)
+# and exits non-zero if ANY single one fails — that is exactly what shows up
+# as "fingerprint cached (offline?)". Bound it with a timeout so a stalled
+# connection can't freeze the Action, retry once for transient failures, and
+# keep the real output in CONFIG_DIR/autopif.log (instead of /dev/null) so an
+# "offline" result is actually diagnosable.
 FP_OK=1
-[ -f "$MODPATH/autopif4.sh" ] && { sh "$MODPATH/autopif4.sh" -s -m >/dev/null 2>&1 || FP_OK=0; }
+if [ -f "$MODPATH/autopif4.sh" ]; then
+    run_autopif() {
+        if command -v timeout >/dev/null 2>&1; then
+            timeout 60 sh "$MODPATH/autopif4.sh" -s -m
+        else
+            sh "$MODPATH/autopif4.sh" -s -m
+        fi
+    }
+    run_autopif >"$CONFIG_DIR/autopif.log" 2>&1 \
+        || { sleep 2; run_autopif >>"$CONFIG_DIR/autopif.log" 2>&1 || FP_OK=0; }
+fi
 
 # --- enforce STRONG-friendly spoof settings on every pif variant ----------
 for f in "$MODPATH/custom.pif.prop" "$MODPATH/pif.prop" \
@@ -59,8 +85,15 @@ for f in "$MODPATH/custom.pif.prop" "$MODPATH/pif.prop" \
 done
 
 # --- sync security patch (attestation + Build) ---------------------------
+# Pass "boot" so this ALSO resetprops ro.build.version.security_patch (and the
+# vendor/system variants) to match the spoofed fingerprint. Without it the raw
+# system prop only gets refreshed at boot, so after an Action-driven fingerprint
+# bump the TEE patch (security_patch.txt) moves ahead while the system prop stays
+# at the device's real patch — an inconsistency that both looks like "patch not
+# updating" and can weaken the STRONG verdict. resetprop is available (root) in
+# the Action context, same as post-fs-data.
 PATCH=""
-[ -f "$MODPATH/sync_patch.sh" ] && PATCH=$(sh "$MODPATH/sync_patch.sh" 2>/dev/null)
+[ -f "$MODPATH/sync_patch.sh" ] && PATCH=$(sh "$MODPATH/sync_patch.sh" boot 2>/dev/null)
 
 # --- WebUI: Magisk only → fetch KsuWebUI from GitHub if absent (silent) ----
 dl_out() {
@@ -76,28 +109,30 @@ dl_to() {
     else return 1; fi
 }
 # Only Magisk needs the standalone WebUI app. KSU/KSU-Next/APatch host the
-# webroot natively from their own manager, so skip them. Stash a styled
-# result line in WEBUI_MSG ("emoji|text") to print with the rest below.
+# webroot natively from their own manager, so skip them. The APK download used
+# to run inline, which blocked the Action button for up to a minute on Magisk
+# on every tap the app wasn't installed yet. Do it in the BACKGROUND so the
+# summary prints immediately; a lock file keeps repeated taps from stacking
+# downloads, and a stale lock (tap that never finished) is cleared after 5 min.
 WEBUI_MSG=""
 if [ -d /data/adb/magisk ] && [ "$KSU" != "true" ] && [ "$APATCH" != "true" ]; then
     PKG=io.github.a13e300.ksuwebui
-    if ! pm path "$PKG" >/dev/null 2>&1; then
-        T=/data/local/tmp/.aswebui.apk
-        API="https://api.github.com/repos/KOWX712/KsuWebUIStandalone/releases/latest"
-        FB="https://github.com/KOWX712/KsuWebUIStandalone/releases/download/v1.0/KsuWebUI-1.0-48-release.apk"
-        URL=$(dl_out "$API" 2>/dev/null | grep -o 'https://[^"]*\.apk' | head -1)
-        [ -z "$URL" ] && URL="$FB"
-        if dl_to "$T" "$URL" && [ -s "$T" ]; then
-            chmod 644 "$T" 2>/dev/null
-            if pm install -r "$T" >/dev/null 2>&1; then
-                WEBUI_MSG="📲|WebUI app installed"
-            else
-                WEBUI_MSG="⚠️|WebUI install failed"
+    [ -n "$(find "$MODPATH/.webui_busy" -mmin +5 2>/dev/null)" ] && rm -f "$MODPATH/.webui_busy" 2>/dev/null
+    if ! pm path "$PKG" >/dev/null 2>&1 && [ ! -f "$MODPATH/.webui_busy" ]; then
+        WEBUI_MSG="📲|installing WebUI app (background)"
+        : > "$MODPATH/.webui_busy"
+        {
+            T=/data/local/tmp/.aswebui.apk
+            API="https://api.github.com/repos/KOWX712/KsuWebUIStandalone/releases/latest"
+            FB="https://github.com/KOWX712/KsuWebUIStandalone/releases/download/v1.0/KsuWebUI-1.0-48-release.apk"
+            URL=$(dl_out "$API" 2>/dev/null | grep -o 'https://[^"]*\.apk' | head -1)
+            [ -z "$URL" ] && URL="$FB"
+            if dl_to "$T" "$URL" && [ -s "$T" ]; then
+                chmod 644 "$T" 2>/dev/null
+                pm install -r "$T" >/dev/null 2>&1
             fi
-        else
-            WEBUI_MSG="⚠️|WebUI download failed (offline?)"
-        fi
-        rm -f "$T" 2>/dev/null
+            rm -f "$T" "$MODPATH/.webui_busy" 2>/dev/null
+        } &
     fi
 fi
 

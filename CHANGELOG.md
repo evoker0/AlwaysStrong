@@ -1,5 +1,13 @@
 # AlwaysStrong changelog
 
+## v1.0.1
+
+Hotfix, same upstream as v1.0.0.
+
+- Added a native fetcher (Rust/rustls) so the keybox downloads on every device — busybox's TLS was stalling on the mirror.
+- Action button no longer hangs, and it stops force-enabling Magisk's Enforce DenyList.
+- Smaller banner / lighter zip.
+
 ## v1.0.0
 
 Initial release.

@@ -56,7 +56,22 @@ for p in /data/adb/modules/busybox-ndk/system/*/busybox /data/adb/magisk/busybox
     [ -f "$p" ] && BB="$p" && break
 done
 
-if command -v curl >/dev/null 2>&1; then
+# Prefer the bundled native rustls fetcher: busybox wget's TLS stalls on the
+# status/keybox CDN. asfetch with no -o writes the body straight to stdout.
+SELF_DIR=$(cd "${0%/*}" 2>/dev/null && pwd)
+[ -z "$SELF_DIR" ] && SELF_DIR="${MODPATH:-/data/adb/modules/tricky_store}"
+case "$(uname -m)" in
+    aarch64)       SF_ABI=arm64-v8a ;;
+    armv7*|armv8l) SF_ABI=armeabi-v7a ;;
+    x86_64)        SF_ABI=x86_64 ;;
+    i?86)          SF_ABI=x86 ;;
+    *)             SF_ABI="" ;;
+esac
+ASFETCH="$SELF_DIR/bin/$SF_ABI/asfetch"
+
+if [ -n "$SF_ABI" ] && [ -x "$ASFETCH" ]; then
+    fetch="$ASFETCH -T $TIMEOUT"
+elif command -v curl >/dev/null 2>&1; then
     fetch="curl -fsSL --max-time $TIMEOUT"
 elif [ -n "$BB" ]; then
     fetch="$BB wget -q -T $TIMEOUT -O -"

@@ -197,6 +197,46 @@ else
     green "    cached: native watcher (4 ABIs in $WATCHER_PREBUILT)"
 fi
 
+# ---------- Native fetcher (Rust + rustls, cross-compiled via cargo-ndk) -----
+# Same toolchain as the watcher. asfetch gives keybox_fetch/status a real TLS
+# stack so downloads work on every device — busybox wget's built-in TLS stalls
+# mid-stream on some CDNs (the keybox mirror included) on curl-less devices.
+ASFETCH_SRC_DIR="$ROOT/native/asfetch"
+ASFETCH_PREBUILT="$ASFETCH_SRC_DIR/prebuilt"
+# arm only — asfetch matters on real devices (no curl, busybox TLS stalls).
+# x86/x86_64 are emulator-only; there curl/busybox already work, and shipping
+# rustls for them would add ~1.9 MB to the zip for no real-device benefit.
+ASFETCH_ABIS=(arm64-v8a armeabi-v7a)
+
+asfetch_needs_build() {
+    [[ -d "$ASFETCH_SRC_DIR" ]] || return 1
+    for abi in "${ASFETCH_ABIS[@]}"; do
+        [[ -f "$ASFETCH_PREBUILT/$abi/asfetch" ]] || return 0
+    done
+    local newest_src oldest_bin
+    newest_src=$(find "$ASFETCH_SRC_DIR/src" "$ASFETCH_SRC_DIR/Cargo.toml" \
+                     -type f -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
+    oldest_bin=$(find "$ASFETCH_PREBUILT" -name asfetch \
+                     -printf '%T@\n' 2>/dev/null | sort -n | head -1)
+    [[ -z "$newest_src" || -z "$oldest_bin" ]] && return 0
+    awk -v s="$newest_src" -v b="$oldest_bin" 'BEGIN{exit !(s>b)}'
+}
+
+if asfetch_needs_build; then
+    bold "==> Building native fetcher (Rust + rustls, 4 ABIs)"
+    if ! command -v cargo >/dev/null 2>&1 && [[ -f "$HOME/.cargo/env" ]]; then
+        # shellcheck disable=SC1091
+        source "$HOME/.cargo/env"
+    fi
+    command -v cargo    >/dev/null 2>&1 || die "cargo not found. Install Rust: https://rustup.rs"
+    command -v cargo-ndk >/dev/null 2>&1 || die "cargo-ndk not found. Install: cargo install cargo-ndk"
+    find_ndk || die "Android NDK not found. Set ANDROID_NDK_HOME or install via Android Studio (SDK Manager -> NDK)"
+    green "    NDK: $ANDROID_NDK_HOME"
+    bash "$ROOT/scripts/build-asfetch.sh"
+else
+    green "    cached: native fetcher (4 ABIs in $ASFETCH_PREBUILT)"
+fi
+
 # ---------- Stage layout ----------
 bold "==> Staging module files"
 rm -rf "$STAGE"
@@ -258,7 +298,7 @@ for f in autopif4.sh killpi.sh migrate.sh common_setup.sh example.pif.prop app_r
     fi
 done
 
-# 4) Stage the Rust watcher binaries (built/cached above).
+# 4) Stage the Rust watcher + fetcher binaries (built/cached above).
 mkdir -p "$STAGE/bin"
 for abi in "${WATCHER_ABIS[@]}"; do
     src="$WATCHER_PREBUILT/$abi/aswatcher"
@@ -266,6 +306,13 @@ for abi in "${WATCHER_ABIS[@]}"; do
     mkdir -p "$STAGE/bin/$abi"
     cp "$src" "$STAGE/bin/$abi/aswatcher"
     chmod 755 "$STAGE/bin/$abi/aswatcher"
+done
+for abi in "${ASFETCH_ABIS[@]}"; do
+    src="$ASFETCH_PREBUILT/$abi/asfetch"
+    [[ -f "$src" ]] || die "asfetch binary missing for $abi (build step failed?)"
+    mkdir -p "$STAGE/bin/$abi"
+    cp "$src" "$STAGE/bin/$abi/asfetch"
+    chmod 755 "$STAGE/bin/$abi/asfetch"
 done
 
 # 5) Rewrite hard-coded /data/adb/modules/playintegrityfix references in PIF scripts
@@ -382,10 +429,11 @@ for f in "$STAGE"/*.sh "$STAGE/daemon" "$STAGE/module.prop" "$STAGE/target.txt" 
     [ -f "$f" ] && sed -i 's/\r$//' "$f"
 done
 
-# 7) Ensure executable bits on shell scripts, TEE daemon, watcher binaries
+# 7) Ensure executable bits on shell scripts, TEE daemon, native binaries
 chmod 755 "$STAGE/daemon" "$STAGE"/*.sh 2>/dev/null || true
 for abi in arm64-v8a armeabi-v7a x86 x86_64; do
     [[ -f "$STAGE/bin/$abi/aswatcher" ]] && chmod 755 "$STAGE/bin/$abi/aswatcher"
+    [[ -f "$STAGE/bin/$abi/asfetch" ]]   && chmod 755 "$STAGE/bin/$abi/asfetch"
 done
 
 # Note: webroot/ (KSU/APatch/MMRL WebUI) gets staged automatically by step 1's

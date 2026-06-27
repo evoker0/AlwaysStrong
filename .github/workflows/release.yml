@@ -1,0 +1,50 @@
+name: Release
+
+# Tag a version (e.g. `git tag v1.0.1 && git push origin v1.0.1`) and this
+# builds the installable zip on GitHub's runners and attaches it to the
+# release. The zip is produced from source here — it is never uploaded by hand.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends zip unzip
+
+      - name: Use committed native binaries (skip the cargo-ndk step in CI)
+        # native/*/prebuilt/<abi>/* are committed; touching them newer than the
+        # sources makes build.sh package them as-is instead of needing Rust+NDK.
+        run: find native -path '*/prebuilt/*' -type f -exec touch {} +
+
+      - name: Build module zip
+        run: bash build.sh
+
+      - name: Release notes from CHANGELOG
+        run: |
+          awk -v v="## ${GITHUB_REF_NAME}" '
+            $0==v {f=1; next}
+            /^## / {f=0}
+            f {print}
+          ' CHANGELOG.md > RELEASE_NOTES.md
+          echo "----- notes -----"; cat RELEASE_NOTES.md
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body_path: RELEASE_NOTES.md
+          files: out/AlwaysStrong-*.zip
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true

@@ -7,18 +7,13 @@ MODPATH="${0%/*}"
 # playintegrityfix folder to create here — everything lives under our module.
 [ -f "$MODPATH/common_setup.sh" ] && . $MODPATH/common_setup.sh
 
-# --- DenyList: hide root from the Play stack (Magisk) ---------------------
-# Requested behaviour: GMS, GSF and Play Store always go on the DenyList so
-# Magisk hides root from them. Our PIF zygisk module still injects into these
-# processes regardless of DenyList membership, so Build/prop spoofing keeps
-# working while root stays hidden — the two are independent in Zygisk mode.
-if command -v magisk >/dev/null 2>&1; then
-    magisk --denylist enable 2>/dev/null
-    magisk --denylist add com.google.android.gms 2>/dev/null
-    magisk --denylist add com.google.android.gms com.google.android.gms.unstable 2>/dev/null
-    magisk --denylist add com.google.android.gsf 2>/dev/null
-    magisk --denylist add com.android.vending 2>/dev/null
-fi
+# --- DenyList: intentionally NOT managed ---------------------------------
+# We must never force "Enforce DenyList" on. With Zygisk Next / ReZygisk /
+# NeoZygisk (the recommended setup) plus a hider like Shamiko, enforcement is
+# meant to stay OFF — the Zygisk implementation does the hiding, and turning
+# Magisk's enforcement on can actually break it. A previous version called
+# `magisk --denylist enable` here, which flipped a toggle users deliberately
+# keep off. Leave the user's DenyList state exactly as they set it.
 
 # --- Security patch level (attestation + Build consistency) ---------------
 # Writes /data/adb/tricky_store/security_patch.txt for the TEE attestation and

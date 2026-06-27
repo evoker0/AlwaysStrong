@@ -26,17 +26,34 @@ if [ -z "$BASE_URL" ]; then
 fi
 
 # ---- Resolve tools ----
+# Prefer our bundled native rustls fetcher (asfetch). busybox wget's built-in
+# TLS stalls mid-stream on some CDNs (the keybox mirror included) even though
+# the same wget downloads from Google/GitHub fine — so curl-less devices can't
+# pull the keybox at all. asfetch speaks TLS 1.2/1.3 correctly on every ABI.
+SELF_DIR=$(cd "${0%/*}" 2>/dev/null && pwd)
+[ -z "$SELF_DIR" ] && SELF_DIR=/data/adb/modules/tricky_store
+case "$(uname -m)" in
+    aarch64)        ABI=arm64-v8a ;;
+    armv7*|armv8l)  ABI=armeabi-v7a ;;
+    x86_64)         ABI=x86_64 ;;
+    i?86)           ABI=x86 ;;
+    *)              ABI="" ;;
+esac
+ASFETCH="$SELF_DIR/bin/$ABI/asfetch"
+
 DL=""
-if command -v curl >/dev/null 2>&1; then
+if [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
+    DL="$ASFETCH -T 30 -o"
+elif command -v curl >/dev/null 2>&1; then
     DL="curl -fsSL --connect-timeout 10 --max-time 30 -o"
 elif command -v wget >/dev/null 2>&1; then
-    DL="wget -q -O"
+    DL="wget -q -T 20 -O"
 else
     for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox; do
-        if [ -x "$bb" ]; then DL="$bb wget -q -O"; break; fi
+        if [ -x "$bb" ]; then DL="$bb wget -q -T 20 -O"; break; fi
     done
 fi
-[ -z "$DL" ] && { log "no curl/wget/busybox — cannot fetch."; exit 1; }
+[ -z "$DL" ] && { log "no fetcher available (asfetch/curl/wget/busybox) — cannot fetch."; exit 1; }
 
 B64DEC=""
 if echo dGVzdA== | base64 -d >/dev/null 2>&1; then
