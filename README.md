@@ -88,7 +88,7 @@ Triggered from your root manager, or by running `sh action.sh` in a root shell. 
 - pulls a fresh Pixel fingerprint and security patch (`autopif4`)
 - restarts DroidGuard and the Play Store
 
-The verdict updates a few seconds later. No reboot is needed unless you swapped the keybox. The same fingerprint, security-patch and keybox refresh also runs on its own in the background every hour (interval configurable from the WebUI), so the module keeps passing with zero manual upkeep.
+The verdict updates a few seconds later. No reboot is needed. The same fingerprint, security-patch and keybox refresh also runs on its own in the background every hour (interval configurable from the WebUI), so the module keeps passing with zero manual upkeep.
 
 ## Building
 
