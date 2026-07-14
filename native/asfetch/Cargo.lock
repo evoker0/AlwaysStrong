@@ -6,7 +6,8 @@ version = 4
 name = "asfetch"
 version = "1.0.0"
 dependencies = [
- "minreq",
+ "rustls",
+ "webpki-roots",
 ]
 
 [[package]]
@@ -53,17 +54,6 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
-
-[[package]]
-name = "minreq"
-version = "2.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05015102dad0f7d61691ca347e9d9d9006685a64aefb3d79eecf62665de2153d"
-dependencies = [
- "rustls",
- "rustls-webpki",
- "webpki-roots",
-]
 
 [[package]]
 name = "ring"

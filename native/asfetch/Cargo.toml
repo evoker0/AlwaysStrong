@@ -10,10 +10,13 @@ name = "asfetch"
 path = "src/main.rs"
 
 [dependencies]
-# minreq + rustls(ring): pure-Rust TLS 1.2/1.3, statically linked, no system
-# OpenSSL / no busybox ssl_client. webpki-roots bundles the Mozilla CA set so
-# cert validation works on Android without touching /system cacerts.
-minreq = { version = "2.11", default-features = false, features = ["https-rustls"] }
+# rustls(ring) + webpki-roots: pure-Rust TLS 1.2/1.3, statically linked, no
+# system OpenSSL / no busybox ssl_client, Mozilla CA set bundled so cert
+# validation works on Android without touching /system cacerts. We drive the
+# TCP connect ourselves (IPv4-first) because generic resolvers try IPv6 first
+# and hang the whole request on IPv4-only networks that still advertise AAAA.
+rustls = "0.21"
+webpki-roots = "0.25"
 
 [profile.release]
 opt-level = "z"

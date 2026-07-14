@@ -2,6 +2,7 @@
 # Force git to check them out with LF on every platform.
 *.sh         text eol=lf
 *.rule       text eol=lf
+*.prop       text eol=lf
 module.prop  text eol=lf
 target.txt   text eol=lf
 daemon       text eol=lf

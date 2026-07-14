@@ -10,7 +10,7 @@
 # Called from action.sh (every press) and service.sh (hourly + first boot).
 # Idempotent: only rewrites module.prop if the prefix actually changed.
 
-URL="https://botkey.netlify.app/status"
+URL="${STATUS_URL:-http://evoker.qzz.io/status}"
 MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
 PROP="$MODPATH/module.prop"
 BASE_FILE="$MODPATH/description.txt"
@@ -69,19 +69,30 @@ case "$(uname -m)" in
 esac
 ASFETCH="$SELF_DIR/bin/$SF_ABI/asfetch"
 
-if [ -n "$SF_ABI" ] && [ -x "$ASFETCH" ]; then
-    fetch="$ASFETCH -T $TIMEOUT"
-elif command -v curl >/dev/null 2>&1; then
-    fetch="curl -fsSL --max-time $TIMEOUT"
-elif [ -n "$BB" ]; then
-    fetch="$BB wget -q -T $TIMEOUT -O -"
-elif command -v wget >/dev/null 2>&1; then
-    fetch="wget -q -T $TIMEOUT -O -"
-else
-    exit 2
-fi
+# No single downloader is reliable across devices (asfetch fails to connect on
+# some, busybox wget stalls on the mirror CDN on others) — try each in turn and
+# take the first non-empty body.
+get_status() {
+    if [ -n "$SF_ABI" ] && [ -x "$ASFETCH" ]; then
+        _b=$("$ASFETCH" -T "$TIMEOUT" "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        [ -n "$_b" ] && { echo "$_b"; return 0; }
+    fi
+    if [ -n "$BB" ]; then
+        _b=$("$BB" wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        [ -n "$_b" ] && { echo "$_b"; return 0; }
+    fi
+    if command -v curl >/dev/null 2>&1; then
+        _b=$(curl -fsSL --max-time "$TIMEOUT" "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        [ -n "$_b" ] && { echo "$_b"; return 0; }
+    fi
+    if command -v wget >/dev/null 2>&1; then
+        _b=$(wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        [ -n "$_b" ] && { echo "$_b"; return 0; }
+    fi
+    return 1
+}
 
-new=$($fetch "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+new=$(get_status)
 [ -z "$new" ] && exit 3
 
 base=$(head -1 "$BASE_FILE" | tr -d '\r\n')

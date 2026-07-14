@@ -177,14 +177,20 @@ if [ ! -f "$MODDIR/.bootstrapped" ]; then
     done
     log -t "AlwaysStrong-boot" "first boot: starting bootstrap"
 
-    # 1. keybox
-    if [ -x "$MODDIR/keybox_fetch.sh" ]; then
+    # 1. keybox (skipped entirely in custom-keybox mode — user's own keybox)
+    if [ ! -f /data/adb/tricky_store/custom_keybox ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
         sh "$MODDIR/keybox_fetch.sh" 2>&1 | log -t "AlwaysStrong-boot"
     fi
 
     # 2. fingerprint + security patch (Pixel Canary via autopif4)
+    #    If autopif4's busybox-wget crawl fails on this device, replay the same
+    #    crawl over native asfetch so a fingerprint still lands.
     if [ -f "$MODDIR/autopif4.sh" ]; then
         sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-boot"
+    fi
+    if [ -x "$MODDIR/pif_native_fetch.sh" ] \
+       && { [ ! -s /data/adb/tricky_store/pif.prop ] || ! grep -q "FINGERPRINT=" /data/adb/tricky_store/pif.prop 2>/dev/null; }; then
+        sh "$MODDIR/pif_native_fetch.sh" 2>&1 | log -t "AlwaysStrong-boot"
     fi
 
     # 2b. sync the attestation/system security patch to the fresh fingerprint
@@ -244,9 +250,14 @@ fi
         sleep "$INT"
         if [ ! -f "$CFG/no_auto_fp" ] && [ -f "$MODDIR/autopif4.sh" ]; then
             sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-hourly"
+            # autopif4's busybox-wget crawl failed on this device → native asfetch
+            if [ -x "$MODDIR/pif_native_fetch.sh" ] \
+               && { [ ! -s "$CFG/pif.prop" ] || ! grep -q "FINGERPRINT=" "$CFG/pif.prop" 2>/dev/null; }; then
+                sh "$MODDIR/pif_native_fetch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
+            fi
             [ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
         fi
-        if [ ! -f "$CFG/no_auto_keybox" ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
+        if [ ! -f "$CFG/custom_keybox" ] && [ ! -f "$CFG/no_auto_keybox" ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
             kbout=$(sh "$MODDIR/keybox_fetch.sh" 2>&1)
             kbrc=$?
             [ -n "$kbout" ] && echo "$kbout" | log -t "AlwaysStrong-hourly"

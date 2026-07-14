@@ -25,6 +25,9 @@
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* class selectors (.fm{display:flex}, .icon-btn{display:flex}) would otherwise
+   beat the UA [hidden] rule and force hidden elements visible — pin it. */
+[hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--fg)}
 body{
   font:15px/1.45 -apple-system,system-ui,"SF Pro Text","Segoe UI",Roboto,sans-serif;
@@ -65,6 +68,8 @@ h1{
   animation:pulse 2.2s ease-out infinite;
 }
 .status-val{font-size:17px;letter-spacing:.06em;line-height:1}
+.status-r{display:flex;align-items:center;gap:10px}
+.kb-name{font-size:12px;color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 @keyframes pulse{
   0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}
   70%{box-shadow:0 0 0 10px transparent}
@@ -127,6 +132,88 @@ h1{
 .int::-webkit-inner-spin-button,
 .int::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .int-unit{color:var(--muted);font-size:13px}
+
+/* ---------------- custom keybox ---------------- */
+.ck-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.icon-btn{
+  width:34px;height:34px;flex-shrink:0;border:0;border-radius:9px;
+  background:color-mix(in srgb,var(--muted) 10%,transparent);
+  color:var(--muted);cursor:pointer;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-appearance:none;
+  transition:background .15s,color .15s,transform .12s;
+}
+.icon-btn:hover{color:var(--fg)}
+.icon-btn:active{transform:scale(.92)}
+.icon-btn svg{width:17px;height:17px;display:block}
+.icon-btn.danger:hover{color:#ef4444;background:color-mix(in srgb,#ef4444 14%,transparent)}
+.row{transition:background .15s,opacity .25s}
+.row.disabled{opacity:.42;pointer-events:none}
+#ckName{cursor:pointer}
+#ckName.ck-sel{font-size:13px;font-weight:500}
+/* smooth accordion for the file row instead of an abrupt pop */
+#ckFileRow{
+  max-height:0;min-height:0;opacity:0;overflow:hidden;
+  padding-top:0;padding-bottom:0;border-top:0;
+  transition:max-height .3s cubic-bezier(.2,.7,.2,1),opacity .24s ease,
+             padding .3s cubic-bezier(.2,.7,.2,1);
+}
+#ckFileRow.ck-open{
+  max-height:88px;min-height:58px;opacity:1;
+  padding-top:13px;padding-bottom:13px;border-top:1px solid var(--line);
+}
+
+/* ---------------- file manager (Tricky-Addon style dialog) ---------------- */
+.fm{
+  position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.55);
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  padding-top:max(16px,env(safe-area-inset-top));
+  padding-bottom:max(16px,env(safe-area-inset-bottom));
+  animation:fmfade .2s ease both;
+}
+@keyframes fmfade{from{opacity:0}to{opacity:1}}
+.fm-box{
+  background:var(--card);width:100%;max-width:460px;height:80vh;max-height:660px;
+  border-radius:26px;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:var(--shadow-pop);
+  animation:fmpop .3s cubic-bezier(.34,1.28,.64,1) both;
+}
+@keyframes fmpop{from{opacity:0;transform:scale(.93)}to{opacity:1;transform:none}}
+.fm-bar{display:flex;align-items:center;gap:6px;padding:14px 12px 10px}
+.fm-crumb{
+  flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-size:13.5px;
+  scrollbar-width:none;-ms-overflow-style:none;padding:2px 2px;
+}
+.fm-crumb::-webkit-scrollbar{display:none}
+.fm-seg{cursor:pointer;color:var(--fg);font-weight:500}
+.fm-seg:last-child{color:var(--muted)}
+.fm-sep{color:var(--muted);padding:0 5px}
+#fmSort{width:auto;padding:0 12px;height:34px;font-size:12px;font-weight:600;flex-shrink:0}
+.fm-list{
+  flex:1;overflow-y:auto;padding:6px 8px;-webkit-overflow-scrolling:touch;
+  transition:transform .16s ease,opacity .16s ease;
+  will-change:transform,opacity;
+}
+.fm-list.switching{transform:scale(.97);opacity:0}
+.fm-item{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:13px;
+  cursor:pointer;transition:background .12s;
+}
+.fm-item:active{background:color-mix(in srgb,var(--muted) 15%,transparent)}
+.fm-ic{width:26px;height:26px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+.fm-ic svg{width:21px;height:21px;display:block}
+.fm-ic.dir{color:var(--accent)}
+.fm-info{flex:1;min-width:0}
+.fm-nm{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-sub{font-size:11px;color:var(--muted);margin-top:1px;font-variant-numeric:tabular-nums}
+.fm-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 16px}
+.fm-foot{display:flex;justify-content:flex-end;padding:8px 12px 12px;border-top:1px solid var(--line)}
+.fm-cancel{
+  background:transparent;border:0;color:var(--accent);cursor:pointer;
+  font:600 14px/1 inherit;font-family:inherit;padding:9px 16px;border-radius:11px;
+  transition:background .14s;
+}
+.fm-cancel:active{background:color-mix(in srgb,var(--accent) 14%,transparent)}
 
 /* ---------------- language picker ---------------- */
 .lang-btn{
@@ -207,7 +294,10 @@ h1{
     <span class="status-dot" id="statusDot"></span>
     <span data-i="status">Keybox status</span>
   </span>
-  <span class="status-val" id="statusVal">—</span>
+  <span class="status-r">
+    <span class="kb-name" id="kbName"></span>
+    <span class="status-val" id="statusVal">—</span>
+  </span>
 </div>
 
 <div class="lbl" data-i="auto">Auto-update</div>
@@ -272,6 +362,37 @@ h1{
 
 </div>
 
+<div class="lbl" data-i="ckbx">Custom keybox</div>
+<div class="card">
+  <div class="row">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="14" r="3.5"/><path d="m11 12 9-9"/><path d="m15 7 3 3"/><path d="m18 4 3 3"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="ck_t">Custom keybox</div>
+      <div class="row-s" data-i="ck_s">Use your own keybox — auto-fetch off</div>
+    </div>
+    <label class="sw"><input type="checkbox" id="ck"><span class="sl"></span></label>
+  </div>
+  <div class="row" id="ckFileRow">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" id="ckName" data-i="ck_pick">Select keybox file</div>
+      <div class="row-s" id="ckSize" data-i="ck_none">No file selected</div>
+    </div>
+    <div class="ck-actions">
+      <button class="icon-btn" id="ckPick" type="button" aria-label="Select">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-8l-2-2H4a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1z"/></svg>
+      </button>
+      <button class="icon-btn danger" id="ckDel" type="button" aria-label="Delete" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="foot">
   <a class="tg" href="https://t.me/keyboxstrong" data-ext>
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9.78 17.6 9.61 14l7.5-6.78c.34-.31-.07-.46-.52-.19L7.74 12.85 3.74 11.6c-.86-.27-.87-.86.2-1.27L19.16 4.6c.71-.32 1.4.17 1.13 1.27L17.7 17.61c-.19.89-.72 1.1-1.46.69l-3.99-2.94-1.92 1.86c-.22.22-.41.41-.85.41-.43 0-.4-.2-.55-.6-.16-.42-.79-2.6-1.15-3.43z"/></svg>
@@ -287,10 +408,26 @@ h1{
   </a>
 </div>
 
+<div class="fm" id="fm" hidden>
+  <div class="fm-box">
+    <div class="fm-bar">
+      <button class="icon-btn" id="fmUp" type="button" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      </button>
+      <div class="fm-crumb" id="fmPath"></div>
+      <button class="icon-btn" id="fmSort" type="button" aria-label="Sort"><span id="fmSortLbl">A–Z</span></button>
+    </div>
+    <div class="fm-list" id="fmList"></div>
+    <div class="fm-foot">
+      <button class="fm-cancel" id="fmClose" type="button" data-i="fm_cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const I={
-  en:{auto:"Auto-update",fp_t:"Fingerprint",fp_s:"Hourly Pixel Canary refresh",kb_t:"Keybox",kb_s:"Hourly check, only writes if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate"},
-  tr:{auto:"Otomatik güncelleme",fp_t:"Fingerprint",fp_s:"Her saat Pixel Canary'den çekilir",kb_t:"Keybox",kb_s:"Her saat kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış"},
+  en:{auto:"Auto-update",fp_t:"Fingerprint",fp_s:"Hourly Pixel Canary refresh",kb_t:"Keybox",kb_s:"Hourly check, only writes if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate",ckbx:"Custom keybox",ck_t:"Custom keybox",ck_s:"Use your own keybox — auto-fetch off",ck_pick:"Select keybox file",ck_none:"No file selected",ck_have:"keybox.xml",ck_bad:"Not a valid keybox",ck_sel:"Selected keybox:",fm_new:"Newest",fm_old:"Oldest",fm_empty:"Empty folder",fm_cancel:"Cancel"},
+  tr:{auto:"Otomatik güncelleme",fp_t:"Fingerprint",fp_s:"Her saat Pixel Canary'den çekilir",kb_t:"Keybox",kb_s:"Her saat kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış",ckbx:"Özel keybox",ck_t:"Özel keybox",ck_s:"Kendi keyboxını kullan — oto çekme kapalı",ck_pick:"Keybox dosyası seç",ck_none:"Dosya seçilmedi",ck_have:"keybox.xml",ck_bad:"Geçerli keybox değil",ck_sel:"Seçili keybox:",fm_new:"En yeni",fm_old:"En eski",fm_empty:"Boş klasör",fm_cancel:"İptal"},
   ru:{auto:"Автообновление",fp_t:"Fingerprint",fp_s:"Ежечасно с Pixel Canary",kb_t:"Keybox",kb_s:"Ежечасно проверка, запись только если новее",status:"Статус keybox",ind_t:"Индикатор",ind_s:"Показывать префикс в описании",rs_t:"Блок ROM-спуфа",rs_s:"Отключить PixelProps / pihooks",int_t:"Интервал",donate:"Поддержать"},
   es:{auto:"Actualización automática",fp_t:"Fingerprint",fp_s:"Refresco horario desde Pixel Canary",kb_t:"Keybox",kb_s:"Comprobación horaria, escribe solo si es nuevo",status:"Estado del keybox",ind_t:"Indicador",ind_s:"Mostrar prefijo de estado en la descripción",rs_t:"Bloquear ROM spoof",rs_s:"Desactivar PixelProps / pihooks",int_t:"Intervalo",donate:"Donar"},
   pt:{auto:"Atualização automática",fp_t:"Fingerprint",fp_s:"Atualização horária do Pixel Canary",kb_t:"Keybox",kb_s:"Verificação horária, grava só se for novo",status:"Status do keybox",ind_t:"Indicador",ind_s:"Mostrar prefixo de status na descrição",rs_t:"Bloquear ROM spoof",rs_s:"Desativar PixelProps / pihooks",int_t:"Intervalo",donate:"Doar"},
@@ -384,8 +521,21 @@ const FP_FLAG=CFG+"/no_auto_fp";
 const KB_FLAG=CFG+"/no_auto_keybox";
 const IND_FLAG=CFG+"/no_auto_indicator";
 const RS_FLAG=CFG+"/no_rom_spoof_block";
+const CK_FLAG=CFG+"/custom_keybox";
+const KEYBOX=CFG+"/keybox.xml";
 const INT_FILE=CFG+"/hourly_interval_sec";
 const MOD="/data/adb/modules/tricky_store";
+const KEY_HOST="http://evoker.qzz.io";
+
+// Current repo keybox name (evokerrkeyNN) from /meta.json — display only; the
+// keybox itself is still fetched from /key. Fetched once, used by the status
+// pill and the custom-keybox row.
+let metaKeyName="";
+async function fetchMetaName(){
+  const r=await ksuExec(`A=$(ls ${MOD}/bin/*/asfetch 2>/dev/null | head -1); [ -n "$A" ] && "$A" -T 8 ${KEY_HOST}/meta.json 2>/dev/null | grep -o '"filename"[^,]*' | head -1`);
+  const m=(r.stdout||"").match(/"([^"]+)\.xml"/);
+  metaKeyName = m ? m[1] : "";
+}
 
 // flag absent = feature enabled
 async function readEnabled(path){
@@ -394,6 +544,11 @@ async function readEnabled(path){
 }
 async function writeEnabled(path,on){
   await ksuExec(on?`rm -f "${path}"`:`mkdir -p "${CFG}" && touch "${path}"`);
+}
+// presence-based flag (file present = ON), opposite of the *_FLAG toggles above
+async function flagPresent(path){
+  const r=await ksuExec(`[ -f "${path}" ] && echo 1 || echo 0`);
+  return r.stdout.trim()==="1";
 }
 
 async function loadStatus(){
@@ -405,12 +560,15 @@ async function loadStatus(){
   } else {
     document.getElementById("statusRow").hidden=true;
   }
+  // Show which keybox is in use next to the health (label stays "Keybox status")
+  document.getElementById("kbName").textContent=metaKeyName||"";
 }
 
 async function init(){
   const v=await ksuExec(`grep '^version=' "${MOD}/module.prop" 2>/dev/null | cut -d= -f2-`);
   document.getElementById("ver").textContent=(v.stdout.trim()||"v?");
 
+  await fetchMetaName();
   await loadStatus();
 
   const fp=document.getElementById("fp");
@@ -444,6 +602,165 @@ async function init(){
   };
   intInp.addEventListener("blur",saveInterval);
   intInp.addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
+
+  // ---- custom keybox + file manager ----
+  const ck=document.getElementById("ck");
+  const ckFileRow=document.getElementById("ckFileRow");
+  const ckName=document.getElementById("ckName");
+  const ckSize=document.getElementById("ckSize");
+  const ckPick=document.getElementById("ckPick");
+  const ckDel=document.getElementById("ckDel");
+  const kbRow=kb.closest(".row");
+  const KBNAME=CFG+"/.custom_keybox_name";
+
+  const shq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+  const fmtDate=sec=>{ if(!sec) return ""; const d=new Date(sec*1000),p=n=>String(n).padStart(2,"0");
+    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
+  const fmtSize=b=> b>=1048576?(b/1048576).toFixed(1)+" MB": b>=1024?(b/1024).toFixed(1)+" KB": b+" B";
+
+  // Smoothly expand/collapse the file row when custom is toggled; grey the
+  // auto-Keybox row when custom is on (module never auto-fetches then).
+  function ckSetEnabled(on){
+    ckFileRow.classList.toggle("ck-open",on);
+    if(kbRow) kbRow.classList.toggle("disabled",on);
+  }
+  async function ckRefresh(){
+    const r=await ksuExec(`[ -s "${KEYBOX}" ] && echo "$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "0|"`);
+    const t=(r.stdout||"").trim().split("|");
+    const bytes=parseInt(t[0],10)||0, mtime=parseInt(t[1],10)||0;
+    if(bytes>0){
+      // custom file name if the user picked one, else the auto keybox name
+      // (evokerrkeyNN) — not the generic "keybox.xml".
+      let nm=((await ksuExec(`cat "${KBNAME}" 2>/dev/null`)).stdout||"").trim();
+      if(!nm) nm=metaKeyName||"keybox.xml";
+      ckName.textContent=(T.ck_sel||"Selected keybox:")+" "+nm;
+      ckName.classList.add("ck-sel");
+      ckSize.textContent=fmtSize(bytes)+" · "+fmtDate(mtime);
+      ckDel.hidden=false;
+    } else {
+      ckName.textContent=(T.ck_pick||"Select keybox file");
+      ckName.classList.remove("ck-sel");
+      ckSize.textContent=(T.ck_none||"No file selected");
+      ckDel.hidden=true;
+    }
+  }
+
+  // file manager modal
+  const fm=document.getElementById("fm"), fmList=document.getElementById("fmList");
+  const fmPathEl=document.getElementById("fmPath"), fmSortLbl=document.getElementById("fmSortLbl");
+  const FM_START="/storage/emulated/0";
+  let fmPath=FM_START, fmSort=0, fmItems=[];
+  const SORTS=[
+    {lbl:"A–Z", cmp:(a,b)=>a.name.localeCompare(b.name)},
+    {lbl:"Z–A", cmp:(a,b)=>b.name.localeCompare(a.name)},
+    {lbl:(T.fm_new||"Newest"), cmp:(a,b)=>b.mtime-a.mtime},
+    {lbl:(T.fm_old||"Oldest"), cmp:(a,b)=>a.mtime-b.mtime},
+  ];
+  const DIR_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-8l-2-2H4a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1z"/></svg>';
+  const FILE_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/></svg>';
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  // breadcrumb path: clickable segments joined with › (Tricky-Addon style)
+  function fmCrumb(){
+    const parts=fmPath.split("/").filter(Boolean);
+    let acc="";
+    const segs=parts.map(seg=>{ acc+="/"+seg; return `<span class="fm-seg" data-p="${esc(acc)}">${esc(seg)}</span>`; });
+    fmPathEl.innerHTML=segs.length ? segs.join('<span class="fm-sep">›</span>') : '<span class="fm-seg" data-p="/">/</span>';
+    fmPathEl.scrollLeft=fmPathEl.scrollWidth;
+  }
+
+  // One stat call for the whole directory (%F=type %s=size %Y=mtime %n=name) —
+  // ~25x faster than stat-per-file, which was the source of the lag.
+  async function fetchDir(path){
+    const cmd="cd "+shq(path)+" 2>/dev/null && stat -c '%F\t%s\t%Y\t%n' * 2>/dev/null";
+    const r=await ksuExec(cmd);
+    const items=[];
+    (r.stdout||"").split("\n").forEach(l=>{
+      if(!l) return;
+      const p=l.split("\t");
+      if(p.length<4) return;
+      const isDir=p[0]==="directory";
+      if(!isDir && p[0].indexOf("regular")<0) return; // skip symlinks/devices/sockets
+      items.push({dir:isDir, size:parseInt(p[1],10)||0, mtime:parseInt(p[2],10)||0, name:p.slice(3).join("\t")});
+    });
+    return items;
+  }
+  // Build the whole list as one innerHTML string (fast) + event delegation
+  // (one listener on the container, not one per row).
+  function renderDir(items){
+    fmSortLbl.textContent=SORTS[fmSort].lbl;
+    fmCrumb();
+    const dirs=items.filter(i=>i.dir).sort(SORTS[fmSort].cmp);
+    const files=items.filter(i=>!i.dir).sort(SORTS[fmSort].cmp);
+    let html="";
+    if(fmPath!=="/") html+=`<div class="fm-item" data-up="1"><div class="fm-ic dir">${DIR_SVG}</div><div class="fm-info"><div class="fm-nm">..</div></div></div>`;
+    if(!dirs.length && !files.length) html+=`<div class="fm-empty">${esc(T.fm_empty||"Empty folder")}</div>`;
+    for(const it of dirs.concat(files)){
+      const sub=it.dir?fmtDate(it.mtime):fmtSize(it.size)+" · "+fmtDate(it.mtime);
+      html+=`<div class="fm-item" data-dir="${it.dir?1:0}" data-name="${esc(it.name)}"><div class="fm-ic ${it.dir?"dir":""}">${it.dir?DIR_SVG:FILE_SVG}</div><div class="fm-info"><div class="fm-nm">${esc(it.name)}</div><div class="fm-sub">${sub}</div></div></div>`;
+    }
+    fmList.innerHTML=html;
+    fmList.scrollTop=0;
+  }
+  // Navigate: kick off the fetch WHILE the list fades out, so the animation
+  // overlaps the shell call instead of adding to it.
+  async function fmNav(){
+    fmList.classList.add("switching");
+    const pending=fetchDir(fmPath);
+    await sleep(90);
+    fmItems=await pending;
+    renderDir(fmItems);
+    requestAnimationFrame(()=>fmList.classList.remove("switching"));
+  }
+  // Re-sort without hitting the shell again — reorder the cached listing.
+  async function fmResort(){
+    fmList.classList.add("switching");
+    await sleep(90);
+    renderDir(fmItems);
+    requestAnimationFrame(()=>fmList.classList.remove("switching"));
+  }
+  function fmBack(){ if(fmPath==="/") return; fmPath=fmPath.replace(/\/[^/]*$/,"")||"/"; fmNav(); }
+
+  async function fmChoose(path,name){
+    const chk=await ksuExec("head -c 4096 "+shq(path)+" 2>/dev/null | grep -qi -e Keybox -e AndroidAttestation && echo ok || echo bad");
+    if((chk.stdout||"").trim()!=="ok"){ ckSize.textContent=(T.ck_bad||"Not a valid keybox"); fmClose(); return; }
+    await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(KEYBOX)+" && chmod 600 "+shq(KEYBOX)+" && printf '%s' "+shq(name)+" > "+shq(KBNAME));
+    fmClose(); await ckRefresh();
+  }
+  async function fmOpen(){
+    if(!ck.checked) return;
+    fmPath=FM_START; fm.hidden=false; fmList.classList.remove("switching");
+    fmList.innerHTML="";
+    fmItems=await fetchDir(fmPath);
+    renderDir(fmItems);
+  }
+  function fmClose(){ fm.hidden=true; }
+
+  document.getElementById("fmUp").addEventListener("click",fmBack);
+  document.getElementById("fmSort").addEventListener("click",()=>{ fmSort=(fmSort+1)%SORTS.length; fmResort(); });
+  document.getElementById("fmClose").addEventListener("click",fmClose);
+  fmPathEl.addEventListener("click",e=>{ const s=e.target.closest(".fm-seg"); if(s && s.dataset.p!==fmPath){ fmPath=s.dataset.p; fmNav(); }});
+  fm.addEventListener("click",e=>{ if(e.target===fm) fmClose(); });
+  // one delegated click handler for the whole list (no per-row listeners)
+  fmList.addEventListener("click",e=>{
+    const item=e.target.closest(".fm-item"); if(!item) return;
+    if(item.dataset.up){ fmBack(); return; }
+    const name=item.dataset.name;
+    const np=(fmPath==="/"?"":fmPath)+"/"+name;
+    if(item.dataset.dir==="1"){ fmPath=np; fmNav(); } else fmChoose(np,name);
+  });
+
+  ck.checked=await flagPresent(CK_FLAG);
+  ckSetEnabled(ck.checked);
+  await ckRefresh();
+  ck.addEventListener("change",async e=>{
+    await ksuExec(e.target.checked?`mkdir -p "${CFG}" && touch "${CK_FLAG}"`:`rm -f "${CK_FLAG}"`);
+    ckSetEnabled(e.target.checked);
+  });
+  ckPick.addEventListener("click",fmOpen);
+  ckName.addEventListener("click",fmOpen);
+  ckDel.addEventListener("click",async ()=>{ await ksuExec(`rm -f "${KEYBOX}" "${KBNAME}"`); await ckRefresh(); });
 }
 init();
 </script>
