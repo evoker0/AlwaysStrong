@@ -1,16 +1,16 @@
 # AlwaysStrong changelog
 
-## v1.0.3
-
-Fixes strong integrity broken in v1.0.2, and hardens ROM-spoof handling.
-
-- **Strong integrity fix.** The fingerprint now actually reaches PlayIntegrityFork. In v1.0.2 the native fetch wrote the wrong file (`pif.prop`) in the wrong place, so PIF kept spoofing a stale/default fingerprint and STRONG failed even with a valid keybox (3 green). Every fetch path — native, autopif4, and the shipped fallback — now runs `migrate.sh` to produce `custom.pif.prop` in the module dir (the file PIF reads) and enforces the STRONG spoof settings (`spoofProvider=0`, `spoofVendingFinger=1`).
-- **Faster fingerprint.** The fast native crawl (~10s) is primary; autopif4 — whose crawl stalls up to ~1 min on some devices — is the fallback.
-- **ROM spoof handling.** The disable list now matches PlayIntegrityFork's current engines (adds `persist.sys.pp.*`, plus AOSPA / PixelOS / Afterlife detection). Uninstalling AlwaysStrong now restores the ROM's own spoof engines — the persist props it set are cleared on uninstall (only if still unchanged), so removing the module frees PixelProps / pihooks / entryhooks again.
-
 ## v1.0.2
 
-New keybox mirror, a far more reliable fetcher, a custom-keybox file picker in the WebUI, and a faster, steadier Action.
+New keybox mirror, a far more reliable fetcher, a custom-keybox file picker in the WebUI, strong-integrity fixes, and a faster, steadier Action.
+
+**Strong integrity**
+- **The fingerprint reaches PlayIntegrityFork.** PIF's zygisk reads `custom.pif.prop` from the module dir; every fetch path — native, autopif4, and the shipped fallback — now runs `migrate.sh` to produce that file and enforces the STRONG spoof settings (`spoofProvider=0`, `spoofVendingFinger=1`), so STRONG holds with a valid keybox (3 green).
+- **Strong survives the hourly refresh.** The hourly fingerprint refresh regenerated `custom.pif.prop` but skipped re-applying the STRONG spoof settings, so ~1 h after boot the fingerprint silently reverted to a weak config (`spoofProvider=1`, `spoofVendingFinger=0`) and STRONG dropped even though the WebUI still showed 3 green. The native fetch now enforces the STRONG settings itself, and the hourly loop re-enforces them, so every refresh stays strong.
+- **Faster fingerprint.** The fast native crawl (~10s) is primary; autopif4 — whose crawl stalls up to ~1 min on some devices — is the fallback.
+
+**ROM spoof**
+- The disable list now matches PlayIntegrityFork's current engines (adds `persist.sys.pp.*`, plus AOSPA / PixelOS / Afterlife detection). Uninstalling AlwaysStrong now restores the ROM's own spoof engines — the persist props it set are cleared on uninstall (only if still unchanged), so removing the module frees PixelProps / pihooks / entryhooks again.
 
 **Keybox & status**
 - Moved to the new mirror: keybox from `http://evoker.qzz.io/key`, status from `/status`.

@@ -199,5 +199,20 @@ sh "$SELF_DIR/migrate.sh" -i -a "$SELF_DIR/pif.prop" >/dev/null 2>&1
 if [ ! -s "$SELF_DIR/custom.pif.prop" ]; then
     log "migrate.sh did not produce custom.pif.prop."; exit 1
 fi
+
+# migrate.sh defaults to spoofProvider=1 / spoofVendingFinger=0, which asks for
+# a WEAK attestation and breaks STRONG. Enforce the STRONG settings here so the
+# native path is correct no matter who calls it (boot, hourly, Action) — the
+# hourly loop has no separate enforce step, so self-enforcing is essential.
+for kv in spoofProvider=0 spoofVendingFinger=1 spoofBuild=1 \
+          spoofProps=1 spoofSignature=0 spoofVendingSdk=0; do
+    k="${kv%=*}"; v="${kv#*=}"
+    if grep -qE "^${k}=" "$SELF_DIR/custom.pif.prop"; then
+        sed -i "s|^${k}=.*|${k}=${v}|" "$SELF_DIR/custom.pif.prop"
+    else
+        echo "${k}=${v}" >> "$SELF_DIR/custom.pif.prop"
+    fi
+done
+
 log "installed custom.pif.prop ($FP)"
 exit 0

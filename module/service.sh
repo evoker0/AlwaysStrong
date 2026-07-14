@@ -259,6 +259,23 @@ fi
                 sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-hourly"
             fi
             [ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
+            # enforce STRONG spoof settings — migrate.sh (run by native fetch /
+            # autopif4) resets them to spoofProvider=1 / spoofVendingFinger=0,
+            # which breaks STRONG. Without this the hourly refresh silently
+            # reverts the fingerprint to a WEAK config an hour after boot.
+            for CPIF in "$MODDIR/custom.pif.prop" "$MODDIR/pif.prop" \
+                        /data/adb/tricky_store/custom.pif.prop /data/adb/tricky_store/pif.prop; do
+                [ -f "$CPIF" ] || continue
+                for kv in "spoofProvider=0" "spoofVendingFinger=1" "spoofBuild=1" \
+                          "spoofProps=1" "spoofSignature=0" "spoofVendingSdk=0"; do
+                    k="${kv%=*}"; v="${kv#*=}"
+                    if grep -qE "^${k}=" "$CPIF"; then
+                        sed -i "s|^${k}=.*|${k}=${v}|" "$CPIF"
+                    else
+                        echo "${k}=${v}" >> "$CPIF"
+                    fi
+                done
+            done
         fi
         if [ ! -f "$CFG/custom_keybox" ] && [ ! -f "$CFG/no_auto_keybox" ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
             kbout=$(sh "$MODDIR/keybox_fetch.sh" 2>&1)
