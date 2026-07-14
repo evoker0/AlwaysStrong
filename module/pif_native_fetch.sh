@@ -168,7 +168,11 @@ if [ -n "$CANARY_ID" ]; then
 fi
 [ -z "$SECURITY_PATCH" ] && SECURITY_PATCH="$(date '+%Y-%m')-05"
 
-# ---- 5. emit the pif.prop ----
+# ---- 5. emit pif.prop, then migrate -> custom.pif.prop (the file PIF reads) ----
+# PIF's zygisk reads custom.pif.prop from the module dir, NOT pif.prop. Writing
+# only pif.prop leaves PIF spoofing a stale/default fingerprint and STRONG fails.
+# So we run the bundled migrate.sh exactly like autopif4 does. action.sh Step 4
+# then enforces the STRONG spoof settings (spoofProvider=0, spoofVendingFinger=1…).
 FP="google/$PRODUCT/$DEVICE:CANARY/$ID/$INCREMENTAL:user/release-keys"
 TMP="$W/pif.prop"
 cat > "$TMP" <<EOF
@@ -184,7 +188,16 @@ EOF
 grep -q 'FINGERPRINT=google/.*/.*:CANARY/' "$TMP" || { log "produced pif.prop looks wrong."; exit 1; }
 
 mkdir -p "$CONFIG_DIR"
-cp -f "$TMP" "$TARGET" || { log "write $TARGET failed."; exit 1; }
-chmod 644 "$TARGET" 2>/dev/null
-log "wrote $TARGET ($FP)"
+cp -f "$TMP" "$TARGET" 2>/dev/null   # keep pif.prop for display + sync_patch
+
+if [ ! -f "$SELF_DIR/migrate.sh" ]; then
+    log "migrate.sh missing — PIF can't read pif.prop, aborting."; exit 1
+fi
+cp -f "$TMP" "$SELF_DIR/pif.prop" 2>/dev/null
+rm -f "$SELF_DIR/custom.pif.prop" "$SELF_DIR/custom.pif.json" 2>/dev/null
+sh "$SELF_DIR/migrate.sh" -i -a "$SELF_DIR/pif.prop" >/dev/null 2>&1
+if [ ! -s "$SELF_DIR/custom.pif.prop" ]; then
+    log "migrate.sh did not produce custom.pif.prop."; exit 1
+fi
+log "installed custom.pif.prop ($FP)"
 exit 0

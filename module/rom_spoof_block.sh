@@ -16,9 +16,15 @@ CONFIG_DIR=/data/adb/tricky_store
 
 GMS_PROPS_FILE="/data/system/gms_certified_props.json"
 
-# Detection — only act if a ROM spoof engine is actually present.
+# Detection — only act if a ROM spoof engine (or a spoofing custom ROM) is
+# present. The prop/version list mirrors PlayIntegrityFork's common_setup.sh
+# (osm0sis), which tracks the current AOSPA / PixelOS / Afterlife / EvolutionX /
+# crDroid PropImitationHooks / PixelPropsUtils engines.
 gate=0
-resetprop 2>/dev/null | grep -qE 'persist\.sys\.(pihooks|entryhooks|pixelprops)' && gate=1
+resetprop 2>/dev/null | grep -qE 'persist\.sys\.(pihooks|entryhooks|spoof|pixelprops|pp)' && gate=1
+[ -n "$(resetprop ro.aospa.version 2>/dev/null)" ] && gate=1
+[ -n "$(resetprop net.pixelos.version 2>/dev/null)" ] && gate=1
+[ -n "$(resetprop ro.afterlife.version 2>/dev/null)" ] && gate=1
 [ -f "$GMS_PROPS_FILE" ] && gate=1
 [ "$gate" = "0" ] && exit 0
 
@@ -33,20 +39,20 @@ for hook in persist.sys.pihooks.first_api_level persist.sys.pihooks.security_pat
     resetprop 2>/dev/null | grep -q "$hook" || set_persist "$hook" ""
 done
 
-# Hard-disable the known ROM spoof toggles. Values match what each engine's
-# source treats as "do nothing". Any future hook added by these engines that
-# we don't know about gets the persist-prop wipe below as a catch-all.
-set_persist persist.sys.pihooks.disable.gms_props                true
+# Hard-disable the known ROM spoof toggles. The list + values mirror
+# PlayIntegrityFork's common_setup.sh (osm0sis) exactly, so we cover the same
+# engines PIF does. Any future hook we don't know about gets the persist-prop
+# wipe below as a catch-all.
+set_persist persist.sys.pihooks.disable.gms_props                 true
 set_persist persist.sys.pihooks.disable.gms_key_attestation_block true
-set_persist persist.sys.entryhooks_enabled                       false
+set_persist persist.sys.entryhooks_enabled                        false
+set_persist persist.sys.spoof.gms                                 false
 set_persist persist.sys.pixelprops.gms                            false
 set_persist persist.sys.pixelprops.gapps                          false
 set_persist persist.sys.pixelprops.google                         false
 set_persist persist.sys.pixelprops.pi                             false
-
-if [ -f "$GMS_PROPS_FILE" ] && [ "$(resetprop persist.sys.spoof.gms 2>/dev/null)" != "false" ]; then
-    resetprop persist.sys.spoof.gms false 2>/dev/null || true
-fi
+set_persist persist.sys.pp.gms                                    false
+set_persist persist.sys.pp.finsky                                 false
 
 # Wipe any leftover pihook/pixelprops props that we didn't explicitly handle
 # — keeps the prop table clean of identifiable spoof-engine markers that PI

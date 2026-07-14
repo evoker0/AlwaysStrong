@@ -182,15 +182,16 @@ if [ ! -f "$MODDIR/.bootstrapped" ]; then
         sh "$MODDIR/keybox_fetch.sh" 2>&1 | log -t "AlwaysStrong-boot"
     fi
 
-    # 2. fingerprint + security patch (Pixel Canary via autopif4)
-    #    If autopif4's busybox-wget crawl fails on this device, replay the same
-    #    crawl over native asfetch so a fingerprint still lands.
-    if [ -f "$MODDIR/autopif4.sh" ]; then
-        sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-boot"
+    # 2. fingerprint + security patch. native crawl (primary) fetches AND runs
+    #    migrate.sh -> custom.pif.prop (the file PIF reads), fast; autopif4 (whose
+    #    crawl hangs on some devices) is the fallback. Both produce custom.pif.prop.
+    FP_DONE=0
+    if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
+        sh "$MODDIR/pif_native_fetch.sh" >/data/adb/tricky_store/autopif.log 2>&1 && FP_DONE=1
+        cat /data/adb/tricky_store/autopif.log 2>/dev/null | log -t "AlwaysStrong-boot"
     fi
-    if [ -x "$MODDIR/pif_native_fetch.sh" ] \
-       && { [ ! -s /data/adb/tricky_store/pif.prop ] || ! grep -q "FINGERPRINT=" /data/adb/tricky_store/pif.prop 2>/dev/null; }; then
-        sh "$MODDIR/pif_native_fetch.sh" 2>&1 | log -t "AlwaysStrong-boot"
+    if [ "$FP_DONE" = 0 ] && [ -f "$MODDIR/autopif4.sh" ]; then
+        sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-boot"
     fi
 
     # 2b. sync the attestation/system security patch to the fresh fingerprint
@@ -248,12 +249,14 @@ fi
         esac
         [ "$INT" -lt 60 ] && INT=60
         sleep "$INT"
-        if [ ! -f "$CFG/no_auto_fp" ] && [ -f "$MODDIR/autopif4.sh" ]; then
-            sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-hourly"
-            # autopif4's busybox-wget crawl failed on this device → native asfetch
-            if [ -x "$MODDIR/pif_native_fetch.sh" ] \
-               && { [ ! -s "$CFG/pif.prop" ] || ! grep -q "FINGERPRINT=" "$CFG/pif.prop" 2>/dev/null; }; then
-                sh "$MODDIR/pif_native_fetch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
+        if [ ! -f "$CFG/no_auto_fp" ]; then
+            FP_DONE=0
+            if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
+                sh "$MODDIR/pif_native_fetch.sh" >"$CFG/autopif.log" 2>&1 && FP_DONE=1
+                cat "$CFG/autopif.log" 2>/dev/null | log -t "AlwaysStrong-hourly"
+            fi
+            if [ "$FP_DONE" = 0 ] && [ -f "$MODDIR/autopif4.sh" ]; then
+                sh "$MODDIR/autopif4.sh" -s -m 2>&1 | log -t "AlwaysStrong-hourly"
             fi
             [ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
         fi

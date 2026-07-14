@@ -1,5 +1,13 @@
 # AlwaysStrong changelog
 
+## v1.0.3
+
+Fixes strong integrity broken in v1.0.2, and hardens ROM-spoof handling.
+
+- **Strong integrity fix.** The fingerprint now actually reaches PlayIntegrityFork. In v1.0.2 the native fetch wrote the wrong file (`pif.prop`) in the wrong place, so PIF kept spoofing a stale/default fingerprint and STRONG failed even with a valid keybox (3 green). Every fetch path — native, autopif4, and the shipped fallback — now runs `migrate.sh` to produce `custom.pif.prop` in the module dir (the file PIF reads) and enforces the STRONG spoof settings (`spoofProvider=0`, `spoofVendingFinger=1`).
+- **Faster fingerprint.** The fast native crawl (~10s) is primary; autopif4 — whose crawl stalls up to ~1 min on some devices — is the fallback.
+- **ROM spoof handling.** The disable list now matches PlayIntegrityFork's current engines (adds `persist.sys.pp.*`, plus AOSPA / PixelOS / Afterlife detection). Uninstalling AlwaysStrong now restores the ROM's own spoof engines — the persist props it set are cleared on uninstall (only if still unchanged), so removing the module frees PixelProps / pihooks / entryhooks again.
+
 ## v1.0.2
 
 New keybox mirror, a far more reliable fetcher, a custom-keybox file picker in the WebUI, and a faster, steadier Action.

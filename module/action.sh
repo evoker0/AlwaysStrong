@@ -93,46 +93,55 @@ fi
 sleep 1
 
 # --- Step 3: Fingerprint ---
-# The fingerprint is fetched from Google's Pixel build servers. PlayIntegrityFork
-# (autopif4) does this with busybox wget, but its multi-step crawl hangs to its
-# timeout on some devices (~2 min wasted). So we run the SAME crawl ourselves
-# first (pif_native_fetch — busybox wget for Google is fast/reliable), and only
-# fall back to autopif4 (bounded), then an optional mirror, then shipped static
-# props. PIF itself still does the attestation spoofing; this only fetches the
-# fingerprint it consumes. A fingerprint is ALWAYS produced, and we never surface
-# a bare "offline" — a failed primary is shown as "trying fallback".
+# PIF's zygisk reads custom.pif.prop from the module dir. autopif4 fetches a
+# fresh Pixel fingerprint AND runs migrate.sh to produce that file, so it's the
+# primary. If it stalls/fails we fall back to our native crawl (which now also
+# migrates -> custom.pif.prop), then to shipped static props (also migrated).
+# Every path ends with a valid custom.pif.prop; Step 4 enforces the STRONG spoof
+# settings. A failed primary is shown once as "trying with fallback".
 FP_OK=0
 FP_SRC=""
 
-# Primary: native crawl, bounded to 15s total so a slow network can't make it
-# grind through its ~7 requests — it drops to the fallback fast instead.
+# apply_pif SRC.prop — migrate a minimal pif.prop into the custom.pif.prop PIF
+# reads (module dir), using the same tool autopif4 does.
+apply_pif() {
+    [ -f "$MODPATH/migrate.sh" ] || return 1
+    cp -f "$1" "$MODPATH/pif.prop" 2>/dev/null
+    rm -f "$MODPATH/custom.pif.prop" "$MODPATH/custom.pif.json" 2>/dev/null
+    sh "$MODPATH/migrate.sh" -i -a "$MODPATH/pif.prop" >/dev/null 2>&1
+    [ -s "$MODPATH/custom.pif.prop" ]
+}
+
+# 1. native crawl (PRIMARY) — fetches the same Google servers as autopif4 but
+#    fast (~10s), and self-migrates -> custom.pif.prop. autopif4's own crawl
+#    hangs ~45-90s on some devices (its factory-image HEAD stalls), so it's the
+#    fallback now. Gate on the EXIT CODE (0 only when a fresh custom.pif.prop
+#    was actually produced) — a stale one must not count as success.
 if [ -x "$MODPATH/pif_native_fetch.sh" ]; then
     if command -v timeout >/dev/null 2>&1; then
-        timeout 15 sh "$MODPATH/pif_native_fetch.sh" >"$CONFIG_DIR/autopif.log" 2>&1
+        timeout 25 sh "$MODPATH/pif_native_fetch.sh" >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
     else
-        sh "$MODPATH/pif_native_fetch.sh" >"$CONFIG_DIR/autopif.log" 2>&1
+        sh "$MODPATH/pif_native_fetch.sh" >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
     fi
-    if [ -s "$CONFIG_DIR/pif.prop" ] && grep -q "FINGERPRINT=" "$CONFIG_DIR/pif.prop"; then
-        FP_OK=1; FP_SRC="native"
-    fi
+    [ "$FP_OK" = 1 ] && FP_SRC="native"
 fi
 
 if [ "$FP_OK" = 0 ]; then
     row "🔄" "trying with fallback"
     sleep 1
 
-    # Fallback A: autopif4 (PIF fork) — bounded to 10s so it can't stall the Action.
+    # 2. autopif4 (FALLBACK) — upstream-maintained parser; self-migrates too.
+    #    Bounded so its stalling crawl can't freeze the Action.
     if [ -f "$MODPATH/autopif4.sh" ]; then
         if command -v timeout >/dev/null 2>&1; then
-            timeout 10 sh "$MODPATH/autopif4.sh" -s -m >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
+            timeout 40 sh "$MODPATH/autopif4.sh" -s -m >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
         else
             sh "$MODPATH/autopif4.sh" -s -m >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
         fi
         [ "$FP_OK" = 1 ] && FP_SRC="pif"
     fi
 
-    # Fallback B: shipped static fingerprints (alternate between 2 each tap) —
-    # guarantees a fingerprint even with no network at all.
+    # 3. shipped static props (alternate 2 each tap) — migrated so PIF reads them.
     if [ "$FP_OK" = 0 ]; then
         IDX_FILE="$CONFIG_DIR/.fp_idx"
         IDX=$(cat "$IDX_FILE" 2>/dev/null)
@@ -140,8 +149,8 @@ if [ "$FP_OK" = 0 ]; then
         echo "$IDX" > "$IDX_FILE" 2>/dev/null
 
         FB="$MODPATH/pif_fallback_${IDX}.prop"
-        if [ -s "$FB" ] && grep -q "FINGERPRINT=" "$FB"; then
-            cp -f "$FB" "$CONFIG_DIR/pif.prop"
+        if [ -s "$FB" ] && grep -q "FINGERPRINT=" "$FB" && apply_pif "$FB"; then
+            cp -f "$FB" "$CONFIG_DIR/pif.prop" 2>/dev/null
             FP_OK=1; FP_SRC="local"
         fi
     fi
