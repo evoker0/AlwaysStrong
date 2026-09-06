@@ -12,6 +12,7 @@
 - **Action no longer gets stuck on a black screen.** Every network step is bounded and falls back to the next downloader; limits are progress-based, so slow networks are never cut off. The native fetcher prefers IPv4 and retries over the other address family when a connection stalls.
 - Custom ROMs: ROM version no longer shows "unknown", the LineageOS fast-charging toggle is back, and the security patch follows OTAs again (the aggressive hides are opt-in in the Advanced tab).
 - Uninstalling a Lite build no longer removes your own PlayIntegrityFork / Fix.
+- The system security-patch date follows the attested patch again (as in v1.0.3), so attestation checkers no longer report "OS patch differs". It never moves the date backwards, and a new **Advanced → Spoof security patch** toggle turns it off.
 
 **Upstream**
 - PlayIntegrityFork v18, TEESimulator-RS v6.0.1-307.

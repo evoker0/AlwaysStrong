@@ -78,25 +78,37 @@ for pf in "$MODPATH/custom.pif.prop" "$CONFIG_DIR/custom.pif.prop"; do
 done
 
 # --- 3. real system props (boot only — needs resetprop) -------------------
-# Belt-and-suspenders for non-hooked readers (getprop, apps PIF doesn't hook).
+# What every app that PIF does NOT hook reads: Build.VERSION.SECURITY_PATCH,
+# getprop. Banking apps and attestation checkers compare that against the
+# osPatchLevel in the hardware attestation (security_patch.txt above). If the
+# two differ they flag it — v1.0.4 shipped with this OFF and got exactly that
+# report ("OS patch differs: attestation=202607 prop=2026-05-01", fine on
+# v1.0.3). So the props follow the attested patch by default, ON EVERY BOOT.
 #
-# OFF BY DEFAULT. Overwriting the global ro.*.security_patch props device-wide
-# makes Settings → About phone show the spoofed patch date and freezes it there
-# even after an OTA bumps the real patch (reported: "alters the security patch
-# date and never updates it"). Play Integrity reads the patch through the
-# zygisk's per-process spoof (*.security_patch in the pif) and the hardware
-# attestation reads security_patch.txt — both handled above and both stay in
-# lock-step with the fingerprint — so the global props are not needed for a
-# STRONG verdict. Leaving them native lets Settings show the true patch and
-# follow OTA updates. Only rewrite them when the user opts in.
-#   Opt-in:  touch /data/adb/tricky_store/spoof_patch_props
-if [ "$MODE" = "boot" ] && [ -f "$CONFIG_DIR/spoof_patch_props" ] && \
+# Two rules keep the earlier complaint ("alters the security patch date and
+# never updates it") from coming back:
+#   - never move a device's patch BACKWARDS: only rewrite when the attested
+#     patch is newer than what the device reports. A stale pif can't paint an
+#     old date, and after an OTA that outruns the fingerprint the real value
+#     stays.
+#   - opt-out for users who want Settings to show the untouched date:
+#       touch /data/adb/tricky_store/no_spoof_patch_props
+#     (the old opt-in file spoof_patch_props still forces it on).
+if [ "$MODE" = "boot" ] && [ ! -f "$CONFIG_DIR/no_spoof_patch_props" ] && \
    command -v resetprop >/dev/null 2>&1; then
+    FORCE=0; [ -f "$CONFIG_DIR/spoof_patch_props" ] && FORCE=1
     for p in ro.build.version.security_patch \
              ro.vendor.build.security_patch \
              ro.system.build.version.security_patch; do
         cur=$(resetprop "$p" 2>/dev/null)
-        [ -n "$cur" ] && [ "$cur" != "$DOT" ] && resetprop -n "$p" "$DOT"
+        [ -n "$cur" ] || continue
+        [ "$cur" = "$DOT" ] && continue
+        curp=$(echo "$cur" | tr -cd '0-9')
+        # newer-or-equal real patch: leave it, unless the user forces it
+        if [ "$FORCE" = 0 ] && [ ${#curp} -eq 8 ] && [ "$curp" -ge "$PACKED" ]; then
+            continue
+        fi
+        resetprop -n "$p" "$DOT"
     done
 fi
 
