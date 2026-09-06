@@ -53,6 +53,14 @@ h1{
   font-weight:500;padding:3px 8px;border-radius:6px;
   background:var(--card);box-shadow:var(--shadow);
 }
+/* Which of the 9 builds this is (PI line · keystore engine), derived at runtime
+   from engine.sh + attest.sh — kept out of the module name, shown here instead. */
+.variant{
+  flex-basis:100%;margin-top:3px;
+  color:var(--muted);font-size:11.5px;font-weight:500;letter-spacing:.012em;
+  opacity:.85;
+}
+.variant:empty{display:none}
 
 /* ---------------- status pill ---------------- */
 .status{
@@ -248,6 +256,25 @@ h1{
 .lang-pop button.active{color:var(--accent);font-weight:600}
 .lang-pop button.active::after{content:"✓";font-size:13px;opacity:.9}
 
+/* ---------------- tab bar ---------------- */
+.tabs{
+  display:flex;gap:4px;background:var(--card);border-radius:12px;
+  padding:4px;margin:0 0 22px;box-shadow:var(--shadow);
+}
+.tab{
+  flex:1;border:0;background:transparent;color:var(--muted);
+  font:600 13px/1 inherit;font-family:inherit;padding:11px 8px;border-radius:9px;
+  cursor:pointer;transition:background .16s,color .16s;
+}
+.tab.active{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+.tab:active{transform:scale(.98)}
+/* amber accent for a row whose toggle degrades a ROM feature when enabled */
+.warn-row .row-ic{color:#f59e0b;background:color-mix(in srgb,#f59e0b 13%,transparent)}
+.adv-note{color:var(--muted);font-size:12px;line-height:1.5;margin:2px 6px 0 14px}
+.spoofvar-t{font:600 14.5px/1.25 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;letter-spacing:-.01em}
+#spoofVars .row{min-height:52px}
+#spoofVars .fm-empty{padding:22px 16px}
+
 /* ---------------- footer ---------------- */
 .foot{
   margin-top:30px;display:flex;justify-content:center;
@@ -341,9 +368,22 @@ h1{
 .cfg-kbrow .chev{width:18px;height:18px;color:var(--muted);flex-shrink:0;margin-inline-start:auto}
 /* footer: ghost Cancel + primary Apply */
 .fm-foot{gap:6px}
-#cfgApply,#kbpOk,#appsOk{background:var(--accent);color:#fff;border-radius:10px;padding:9px 22px;font-weight:600;transition:transform .12s,filter .15s}
-#cfgApply:hover,#kbpOk:hover,#appsOk:hover{filter:brightness(1.06)}
-#cfgApply:active,#kbpOk:active,#appsOk:active{transform:scale(.96)}
+#cfgApply,#kbpOk,#appsOk,#pkgOk{background:var(--accent);color:#fff;border-radius:10px;padding:9px 22px;font-weight:600;transition:transform .12s,filter .15s}
+#cfgApply:hover,#kbpOk:hover,#appsOk:hover,#pkgOk:hover{filter:brightness(1.06)}
+#cfgApply:active,#kbpOk:active,#appsOk:active,#pkgOk:active{transform:scale(.96)}
+/* kebab menu inside the Target apps dialog */
+.fm-box{position:relative}
+.menu-pop{
+  position:absolute;top:52px;right:12px;z-index:20;
+  background:var(--card);border-radius:12px;padding:6px 0;min-width:214px;
+  box-shadow:var(--shadow-pop);
+  animation:popin .16s cubic-bezier(.34,1.56,.64,1) both;transform-origin:top right;
+}
+.menu-pop button{
+  display:block;width:100%;text-align:start;background:transparent;border:0;
+  color:var(--fg);padding:12px 16px;font:14px/1.2 inherit;font-family:inherit;cursor:pointer;
+}
+.menu-pop button:active{background:color-mix(in srgb,var(--muted) 12%,transparent)}
 /* file manager sits ABOVE the app/config/keybox overlays (e.g. import from the
    keybox picker) so it isn't hidden behind them */
 #fm{z-index:60}
@@ -359,6 +399,7 @@ h1{
 <div class="hd">
   <h1>AlwaysStrong</h1>
   <div class="ver" id="ver">—</div>
+  <div class="variant" id="variant"></div>
 </div>
 
 <div class="status" id="statusRow" hidden>
@@ -372,10 +413,16 @@ h1{
   </span>
 </div>
 
+<div class="tabs" role="tablist">
+  <button class="tab active" id="tabBtnMain" type="button" role="tab" data-i="tab_main">Configuration</button>
+  <button class="tab" id="tabBtnAdv" type="button" role="tab" data-i="tab_adv">Advanced</button>
+</div>
+
+<div id="tabMain">
 <div class="lbl" data-i="auto">Configuration</div>
 <div class="card">
 
-  <div class="row">
+  <div class="row" id="fpRow" hidden>
     <div class="row-ic">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12c0-3.866 3.134-7 7-7s7 3.134 7 7v1"/><path d="M12 9v4c0 1.105.895 2 2 2"/><path d="M9 18c.6-1 1-2.5 1-5"/><path d="M16 19c-.667-.667-1-2-1-4"/></svg>
     </div>
@@ -477,6 +524,31 @@ h1{
     </div>
   </div>
 </div>
+</div><!-- /tabMain -->
+
+<div id="tabAdv" hidden>
+<div class="lbl" data-i="adv">Advanced</div>
+<div class="card">
+  <div class="row nav" id="impPifRow">
+    <div class="row-ic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M5 19h14"/></svg>
+    </div>
+    <div class="row-lbl">
+      <div class="row-t" data-i="imp_t">Import fingerprint</div>
+      <div class="row-s" data-i="imp_s">Load a pif.json or pif.prop file</div>
+    </div>
+    <button class="icon-btn" id="impPifBtn" type="button" aria-label="Import" tabindex="-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="spoofSection">
+<div class="lbl" data-i="spoofvars">Spoof variables</div>
+<div class="card" id="spoofVars"></div>
+<p class="adv-note" data-i="adv_note">The PlayIntegrity spoof flags. The defaults are what pass STRONG — only flip one if a specific app needs it (e.g. spoofProps off for some wallet apps). Changes apply right away.</p>
+</div>
+</div><!-- /tabAdv -->
 
 <div class="foot">
   <a class="tg" href="https://t.me/keyboxstrong" data-ext>
@@ -520,10 +592,34 @@ h1{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
       </button>
       <input id="appsSearch" class="apps-search" type="text" placeholder="Search apps">
+      <button class="icon-btn" id="appsMenu" type="button" aria-label="Menu" aria-haspopup="true">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="19" r="1.7"/></svg>
+      </button>
+    </div>
+    <div id="appsMenuPop" class="menu-pop" hidden>
+      <button type="button" data-act="add" data-i="pak_add_dlg">Add custom package</button>
+      <button type="button" data-act="selall" data-i="pak_selall">Select all</button>
+      <button type="button" data-act="unnec" data-i="pak_unnec">Deselect unnecessary</button>
     </div>
     <div class="fm-list applist" id="appsList"></div>
     <div class="fm-foot">
       <button class="fm-cancel" id="appsOk" type="button" data-i="pak_ok">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add-custom-package input dialog (from the Target apps menu) -->
+<div class="fm" id="pkgDlg" hidden role="dialog" aria-modal="true" aria-labelledby="pkgDlgTitle">
+  <div class="fm-box kbp-box" style="max-width:360px">
+    <div class="cfg-head">
+      <div class="cfg-htext"><div class="cfg-name" id="pkgDlgTitle" data-i="pak_add_dlg">Add custom package</div></div>
+    </div>
+    <div style="padding:0 18px 6px">
+      <input id="pkgInput" class="apps-search" type="text" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="package.name" style="width:100%">
+    </div>
+    <div class="fm-foot">
+      <button class="fm-cancel ghosttext" id="pkgCancel" type="button" data-i="fm_cancel">Cancel</button>
+      <button class="fm-cancel" id="pkgOk" type="button" data-i="pak_ok">OK</button>
     </div>
   </div>
 </div>
@@ -578,8 +674,8 @@ h1{
 
 <script>
 const I={
-  en:{auto:"Configuration",fp_t:"Fingerprint",fp_s:"Automatic Pixel Canary refresh",kb_t:"Keybox",kb_s:"Auto check, writes only if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate",ckbx:"Custom keybox",ck_t:"Custom keybox",ck_s:"Use your own keybox — auto-fetch off",ck_pick:"Select keybox file",ck_none:"No file selected",ck_have:"keybox.xml",ck_bad:"Not a valid keybox",ck_sel:"Selected keybox:",fm_new:"Newest",fm_old:"Oldest",fm_empty:"Empty folder",fm_cancel:"Cancel",pak:"Target apps",pak_t:"Target apps",pak_s:"Choose apps, mode & keybox",pak_search:"Search apps",pak_default:"Default keybox",pak_import:"Import keybox file…",pak_mode:"Mode",pak_auto:"Auto",pak_auto_s:"Let AlwaysStrong decide",pak_gen:"Generate",pak_gen_s:"Generate the full cert chain (!)",pak_hack:"Hack",pak_hack_s:"Hack the leaf cert (?)",pak_keybox:"Keybox",pak_apply:"Apply",pak_ok:"OK",logs:"Collect logs",logs_run:"Collecting…",logs_done:"Saved:",logs_fail:"Failed — run via root shell",logs_slow:"Still running — check /sdcard"},
-  tr:{auto:"Yapılandırma",fp_t:"Fingerprint",fp_s:"Otomatik Pixel Canary yenileme",kb_t:"Keybox",kb_s:"Otomatik kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış",ckbx:"Özel keybox",ck_t:"Özel keybox",ck_s:"Kendi keyboxını kullan — oto çekme kapalı",ck_pick:"Keybox dosyası seç",ck_none:"Dosya seçilmedi",ck_have:"keybox.xml",ck_bad:"Geçerli keybox değil",ck_sel:"Seçili keybox:",fm_new:"En yeni",fm_old:"En eski",fm_empty:"Boş klasör",fm_cancel:"İptal",pak:"Hedef uygulamalar",pak_t:"Hedef uygulamalar",pak_s:"Uygulama, mod & keybox seç",pak_search:"Uygulama ara",pak_default:"Varsayılan keybox",pak_import:"Keybox dosyası içe aktar…",pak_mode:"Mod",pak_auto:"Oto",pak_auto_s:"AlwaysStrong karar versin",pak_gen:"Üret (Generate)",pak_gen_s:"Tüm sertifika zincirini üret (!)",pak_hack:"Hack",pak_hack_s:"Leaf sertifikayı değiştir (?)",pak_keybox:"Keybox",pak_apply:"Uygula",pak_ok:"Tamam",logs:"Log topla",logs_run:"Toplanıyor…",logs_done:"Kaydedildi:",logs_fail:"Başarısız — root shell'den çalıştır",logs_slow:"Hâlâ çalışıyor — /sdcard klasörüne bak"},
+  en:{auto:"Configuration",fp_t:"Fingerprint",fp_s:"Automatic Pixel Canary refresh",kb_t:"Keybox",kb_s:"Auto check, writes only if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate",ckbx:"Custom keybox",ck_t:"Custom keybox",ck_s:"Use your own keybox — auto-fetch off",ck_pick:"Select keybox file",ck_none:"No file selected",ck_have:"keybox.xml",ck_bad:"Not a valid keybox",ck_sel:"Selected keybox:",fm_new:"Newest",fm_old:"Oldest",fm_empty:"Empty folder",fm_cancel:"Cancel",pak:"Target apps",pak_t:"Target apps",pak_s:"Choose apps, mode & keybox",pak_search:"Search apps",pak_default:"Default keybox",pak_import:"Import keybox file…",pak_mode:"Mode",pak_auto:"Auto",pak_auto_s:"Let AlwaysStrong decide",pak_gen:"Generate",pak_gen_s:"Generate the full cert chain (!)",pak_hack:"Hack",pak_hack_s:"Hack the leaf cert (?)",pak_keybox:"Keybox",pak_apply:"Apply",pak_ok:"OK",logs:"Collect logs",logs_run:"Collecting…",logs_done:"Saved:",logs_fail:"Failed — run via root shell",logs_slow:"Still running — check /sdcard",tab_main:"Configuration",tab_adv:"Advanced",adv:"Advanced",spoofvars:"Spoof variables",pak_menu:"Menu",pak_selall:"Select all",pak_unnec:"Deselect unnecessary",pak_add_dlg:"Add custom package",pak_add_ph2:"package.name",pak_selall_done:"All apps selected",pak_unnec_done:"Deselected unnecessary apps",adv_note:"These are for edge cases. Leave them off unless an app needs it — the defaults are what pass STRONG.",spf_t:"Spoof system props",spf_s:"Turn off if a wallet/bank app fails",imp_t:"Import fingerprint",imp_s:"Load a pif.json or pif.prop file",hrm_t:"Hide ROM identity",hrm_s:"Also hides ROM version & fast-charge toggle",spp_t:"Spoof security patch",spp_s:"Force patch date system-wide, freezes Settings",applied:"Applied — restarting Play Integrity",imp_run:"Importing…",imp_ok:"Fingerprint imported",imp_bad:"Import failed",imp_none:"Not a pif.json / pif.prop file",pak_add:"Add custom package",pak_add_ph:"com.example.app",pak_add_bad:"Enter a valid package name"},
+  tr:{auto:"Yapılandırma",fp_t:"Fingerprint",fp_s:"Otomatik Pixel Canary yenileme",kb_t:"Keybox",kb_s:"Otomatik kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış",ckbx:"Özel keybox",ck_t:"Özel keybox",ck_s:"Kendi keyboxını kullan — oto çekme kapalı",ck_pick:"Keybox dosyası seç",ck_none:"Dosya seçilmedi",ck_have:"keybox.xml",ck_bad:"Geçerli keybox değil",ck_sel:"Seçili keybox:",fm_new:"En yeni",fm_old:"En eski",fm_empty:"Boş klasör",fm_cancel:"İptal",pak:"Hedef uygulamalar",pak_t:"Hedef uygulamalar",pak_s:"Uygulama, mod & keybox seç",pak_search:"Uygulama ara",pak_default:"Varsayılan keybox",pak_import:"Keybox dosyası içe aktar…",pak_mode:"Mod",pak_auto:"Oto",pak_auto_s:"AlwaysStrong karar versin",pak_gen:"Üret (Generate)",pak_gen_s:"Tüm sertifika zincirini üret (!)",pak_hack:"Hack",pak_hack_s:"Leaf sertifikayı değiştir (?)",pak_keybox:"Keybox",pak_apply:"Uygula",pak_ok:"Tamam",logs:"Log topla",logs_run:"Toplanıyor…",logs_done:"Kaydedildi:",logs_fail:"Başarısız — root shell'den çalıştır",logs_slow:"Hâlâ çalışıyor — /sdcard klasörüne bak",tab_main:"Yapılandırma",tab_adv:"Gelişmiş",adv:"Gelişmiş",spoofvars:"Spoof değişkenleri",pak_menu:"Menü",pak_selall:"Tümünü seç",pak_unnec:"Gereksizleri kaldır",pak_add_dlg:"Özel paket ekle",pak_add_ph2:"paket.adi",pak_selall_done:"Tüm uygulamalar seçildi",pak_unnec_done:"Gereksiz uygulamalar kaldırıldı",adv_note:"Bunlar istisnai durumlar içindir. Bir uygulama gerektirmedikçe kapalı bırakın — STRONG'u geçiren varsayılanlardır.",spf_t:"Sistem proplarını spoofla",spf_s:"Cüzdan/banka uygulaman çalışmıyorsa kapat",imp_t:"Fingerprint içe aktar",imp_s:"pif.json veya pif.prop dosyası yükle",hrm_t:"ROM kimliğini gizle",hrm_s:"ROM sürümünü ve hızlı şarj anahtarını da gizler",spp_t:"Güvenlik yamasını spoofla",spp_s:"Yama tarihini sistem genelinde zorlar, Ayarlar'ı dondurur",applied:"Uygulandı — Play Integrity yeniden başlatılıyor",imp_run:"İçe aktarılıyor…",imp_ok:"Fingerprint içe aktarıldı",imp_bad:"İçe aktarma başarısız",imp_none:"pif.json / pif.prop dosyası değil",pak_add:"Özel paket ekle",pak_add_ph:"com.example.app",pak_add_bad:"Geçerli bir paket adı gir"},
   ru:{auto:"Автообновление",fp_t:"Fingerprint",fp_s:"Ежечасно с Pixel Canary",kb_t:"Keybox",kb_s:"Ежечасно проверка, запись только если новее",status:"Статус keybox",ind_t:"Индикатор",ind_s:"Показывать префикс в описании",rs_t:"Блок ROM-спуфа",rs_s:"Отключить PixelProps / pihooks",int_t:"Интервал",donate:"Поддержать",logs:"Собрать логи",logs_run:"Сбор…",logs_done:"Сохранено:",logs_fail:"Ошибка — запустите через root shell",logs_slow:"Ещё выполняется — см. /sdcard"},
   es:{auto:"Actualización automática",fp_t:"Fingerprint",fp_s:"Refresco horario desde Pixel Canary",kb_t:"Keybox",kb_s:"Comprobación horaria, escribe solo si es nuevo",status:"Estado del keybox",ind_t:"Indicador",ind_s:"Mostrar prefijo de estado en la descripción",rs_t:"Bloquear ROM spoof",rs_s:"Desactivar PixelProps / pihooks",int_t:"Intervalo",donate:"Donar",logs:"Recoger registros",logs_run:"Recogiendo…",logs_done:"Guardado:",logs_fail:"Falló — ejecuta desde una shell root",logs_slow:"Aún en curso — mira en /sdcard"},
   pt:{auto:"Atualização automática",fp_t:"Fingerprint",fp_s:"Atualização horária do Pixel Canary",kb_t:"Keybox",kb_s:"Verificação horária, grava só se for novo",status:"Status do keybox",ind_t:"Indicador",ind_s:"Mostrar prefixo de status na descrição",rs_t:"Bloquear ROM spoof",rs_s:"Desativar PixelProps / pihooks",int_t:"Intervalo",donate:"Doar",logs:"Coletar logs",logs_run:"Coletando…",logs_done:"Salvo:",logs_fail:"Falhou — execute via shell root",logs_slow:"Ainda em execução — veja /sdcard"},
@@ -740,6 +836,10 @@ async function flagPresent(path){
   const r=await ksuExec(`[ -f "${path}" ] && echo 1 || echo 0`);
   return r.stdout.trim()==="1";
 }
+// presence flag writer: ON -> create the file, OFF -> remove it
+async function writePresence(path,on){
+  await ksuExec(on?`mkdir -p "${CFG}" && touch "${path}"`:`rm -f "${path}"`);
+}
 
 async function loadStatus(){
   const r=await ksuExec(`grep -m1 '^description=' "${MOD}/module.prop" 2>/dev/null | sed -e 's/^description=//' | awk '{print $1}'`);
@@ -757,6 +857,18 @@ async function loadStatus(){
 async function init(){
   const v=await ksuExec(`grep '^version=' "${MOD}/module.prop" 2>/dev/null | cut -d= -f2-`);
   document.getElementById("ver").textContent=(v.stdout.trim()||"v?");
+
+  // Which of the 9 variants is installed: the PI line (engine.sh ENGINE) and the
+  // keystore engine (attest.sh ATTEST). Both already live in the module — no extra
+  // file — and the pair is too long for the module name, so it lands here instead.
+  try{
+    const eng=(await ksuExec(`grep -m1 '^ENGINE=' "${MOD}/engine.sh" 2>/dev/null | cut -d= -f2-`)).stdout.trim();
+    const att=(await ksuExec(`grep -m1 '^ATTEST=' "${MOD}/attest.sh" 2>/dev/null | cut -d= -f2-`)).stdout.trim();
+    const piMap={fork:"Fork",inject:"Inject",none:"Lite"};
+    const ksMap={tee:"TEESimulator-RS",trickystoreoss:"TrickyStoreOSS",teesim:"TEESimulator"};
+    const parts=[piMap[eng],ksMap[att]].filter(Boolean);
+    document.getElementById("variant").textContent=parts.join(" · ");
+  }catch(e){}
 
   await fetchMetaName();
   await loadStatus();
@@ -780,6 +892,109 @@ async function init(){
     await loadStatus();
   });
   rs.addEventListener("change",e=>writeEnabled(RS_FLAG,e.target.checked));
+
+  // ---- tabs: Configuration / Advanced ----
+  const tabMain=document.getElementById("tabMain"), tabAdv=document.getElementById("tabAdv");
+  const tabBtnMain=document.getElementById("tabBtnMain"), tabBtnAdv=document.getElementById("tabBtnAdv");
+  function showTab(adv){
+    tabMain.hidden=adv; tabAdv.hidden=!adv;
+    tabBtnMain.classList.toggle("active",!adv);
+    tabBtnAdv.classList.toggle("active",adv);
+  }
+  tabBtnMain.addEventListener("click",()=>showTab(false));
+  tabBtnAdv.addEventListener("click",()=>showTab(true));
+
+  // ---- advanced: raw PIF spoof variables ----
+  // One toggle per spoof*/DEBUG flag in the active pif, by its real name.
+  // Flipping a toggle writes a per-key override into spoof.conf and re-enforces,
+  // so it survives the hourly re-apply. The STRONG defaults live in engine.sh;
+  // only flip one if a specific app needs it (e.g. spoofProps off for a wallet).
+  const SPOOF_CONF=CFG+"/spoof.conf";
+  const PIF_DIR="/data/adb/modules/playintegrityfix";   // a standalone PlayIntegrityFork
+  const spoofVarsEl=document.getElementById("spoofVars");
+  let spoofStyle="num"; // "num" (1/0, Fork) | "bool" (true/false, inject-s)
+  // Where the toggles read from and write to:
+  //   "as"   fork/inject — AlwaysStrong's bundled PIF, via spoof.conf + reapply_spoof
+  //   "pif"  Lite + a standalone PlayIntegrityFork — that module's own custom.pif.prop,
+  //          applied with its killpi.sh (there is no bundled engine to enforce here)
+  //   "none" Lite with no PIF installed — nothing to configure, card hidden
+  let spoofMode="as";
+  const isFalseVal=v=>{ v=String(v).trim().toLowerCase(); return v==="0"||v==="false"||v==="off"||v==="no"; };
+  const escKey=s=>String(s).replace(/[^A-Za-z0-9_]/g,"");
+  // The FULL spoof-flag set each PIF flavour supports, so the Advanced card offers
+  // every option — not just the ones already written to the prop. Fork uses numeric
+  // 1/0 and its own flags; inject-s uses true/false and a wider set (incl. spoofConfig
+  // + DEBUG). FLAG_ON lists the flags whose STRONG default is ON.
+  const FLAGSET={
+    fork:  ["spoofProvider","spoofVendingFinger","spoofBuild","spoofProps","spoofSignature","spoofVendingSdk"],
+    inject:["spoofBuild","spoofProps","spoofProvider","spoofSignature","spoofVendingBuild","spoofVendingSdk","DEBUG"]
+  };
+  const FLAG_ON={spoofVendingFinger:1,spoofBuild:1,spoofProps:1,spoofVendingBuild:1};
+  let spoofKind="";  // "fork" | "inject" — set from lite_pif_sync --detect on the Lite line
+  const spoofSrc=()=> spoofMode==="pif"
+    ? `"${PIF_DIR}/custom.pif.prop" "${PIF_DIR}/pif.prop"`
+    : `"${MOD}/custom.pif.prop" "${CFG}/custom.pif.prop" "${MOD}/pif.prop" "${CFG}/pif.prop"`;
+  async function loadSpoofVars(){
+    const r=await ksuExec(`for f in ${spoofSrc()}; do [ -s "$f" ] && grep -qiE '^(spoof|DEBUG)' "$f" && { grep -iE '^(spoof|DEBUG)' "$f"; break; }; done`);
+    const cur={};
+    (r.stdout||"").split("\n").forEach(l=>{
+      l=l.trim(); const i=l.indexOf("="); if(i<1) return;
+      const k=escKey(l.slice(0,i).trim()), v=l.slice(i+1).trim();
+      if(/^(true|false)$/i.test(v)) spoofStyle="bool";           // detect style for the bundled ("as") builds
+      if(/^(spoof|DEBUG)/i.test(k)) cur[k]=!isFalseVal(v);
+    });
+    // On the Lite line the flavour fixes the value style and the full option list.
+    if(spoofMode==="pif") spoofStyle = spoofKind==="inject" ? "bool" : "num";
+    const set = (spoofMode==="pif" && FLAGSET[spoofKind]) ? FLAGSET[spoofKind] : Object.keys(cur);
+    // full set, current value where present, otherwise the STRONG default
+    return set.map(k=>({ k, on: (k in cur) ? cur[k] : !!FLAG_ON[k] }));
+  }
+  function renderSpoofVars(vars){
+    if(!vars.length){ spoofVarsEl.innerHTML=`<div class="fm-empty">—</div>`; return; }
+    spoofVarsEl.innerHTML=vars.map(v=>
+      `<div class="row"><div class="row-lbl"><div class="row-t spoofvar-t">${v.k}</div></div>`
+      +`<label class="sw"><input type="checkbox" data-k="${v.k}"${v.on?" checked":""}><span class="sl"></span></label></div>`
+    ).join("");
+  }
+  spoofVarsEl.addEventListener("change",async e=>{
+    const inp=e.target.closest("input[data-k]"); if(!inp) return;
+    const k=escKey(inp.dataset.k), on=inp.checked;
+    const val = spoofStyle==="bool" ? (on?"true":"false") : (on?"1":"0");
+    if(spoofMode==="pif"){
+      // Lite: persist the choice as a spoof.conf override (this survives the
+      // standalone PIF's autopif, which keeps resetting its custom.pif.prop), then
+      // lite_pif_sync re-asserts it onto the PIF's prop and restarts the PIF.
+      await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/lite_pif_sync.sh" >/dev/null 2>&1`);
+    } else {
+      // fork/inject: per-key override in spoof.conf, then re-enforce on the bundled PIF.
+      await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/reapply_spoof.sh" >/dev/null 2>&1`);
+    }
+    toast(T.applied||"Applied — restarting Play Integrity",2500);
+  });
+  // Pick the target. On the Lite line there's no bundled engine to enforce flags,
+  // so the toggles drive a standalone PlayIntegrityFork if one is installed; with
+  // no PIF there's nothing to configure, so the card is hidden.
+  {
+    const _e=(await ksuExec(`grep -m1 '^ENGINE=' "${MOD}/engine.sh" 2>/dev/null | cut -d= -f2-`)).stdout.trim();
+    const _fpRow=document.getElementById("fpRow");   // hidden by default in the HTML
+    if(_e==="none"){
+      // Lite ships no fingerprint engine — a standalone PIF owns the fingerprint and
+      // AlwaysStrong mirrors it — so the "auto fingerprint refresh" toggle is
+      // meaningless here; it stays hidden. Show the spoof card for a recognised
+      // standalone PlayIntegrityFork OR Fix inject-s (lite_pif_sync --detect prints
+      // its kind); the toggles read that PIF's own flags (so inject-s naturally shows
+      // spoofVendingBuild, not Fork's spoofVendingFinger). No module or an id-squatter
+      // (Integrity Box) -> hidden, nothing of ours to configure.
+      const _k=(await ksuExec(`sh "${MOD}/lite_pif_sync.sh" --detect 2>/dev/null`)).stdout.trim();
+      spoofMode = (_k==="fork"||_k==="inject") ? "pif" : "none";
+      spoofKind = _k;   // drives the full flag list + value style (fork=num, inject=bool)
+    } else if(_fpRow){
+      _fpRow.hidden=false;   // fork / inject builds do fetch a fingerprint — show the toggle
+    }
+    const _sec=document.getElementById("spoofSection");
+    if(spoofMode==="none"){ if(_sec) _sec.hidden=true; }
+    else { renderSpoofVars(await loadSpoofVars()); }
+  }
 
   const cur=await ksuExec(`cat "${INT_FILE}" 2>/dev/null`);
   const curSec=parseInt((cur.stdout||"").trim(),10);
@@ -917,6 +1132,22 @@ async function init(){
   // filename back via fmImportCb (used by the per-app keybox picker).
   let fmMode="ck", fmImportCb=null;
   async function fmChoose(path,name){
+    // Import fingerprint (Advanced tab): accept a pif.json (starts with '{') or a
+    // pif.prop (has a FINGERPRINT= line), hand it to import_pif.sh which routes it
+    // through the engine adapter. Separate from the keybox validation below.
+    if(fmMode==="pif"){
+      const first=((await ksuExec("head -c 256 "+shq(path)+" 2>/dev/null | tr -d ' \\t\\r\\n' | cut -c1")).stdout||"").trim();
+      const hasFp=((await ksuExec("grep -q '^FINGERPRINT=' "+shq(path)+" && echo 1 || echo 0")).stdout||"").trim()==="1";
+      if(first!=="{" && !hasFp){ toast(T.imp_none||"Not a pif.json / pif.prop file",4000); fmClose(); return; }
+      fmClose();
+      toast(T.imp_run||"Importing…",0);
+      const r=await ksuExec("sh "+shq(MOD+"/import_pif.sh")+" "+shq(path)+" 2>&1");
+      const out=(r.stdout||r.stderr||"").trim();
+      if(/(^|\n)OK$/.test(out)||out==="OK"||out.endsWith("OK")) toast(T.imp_ok||"Fingerprint imported",4000);
+      else toast((T.imp_bad||"Import failed")+(out?": "+out.replace(/^ERR:\s*/,""):""),6000);
+      await loadStatus();
+      return;
+    }
     const chk=await ksuExec("head -c 4096 "+shq(path)+" 2>/dev/null | grep -qi -e Keybox -e AndroidAttestation && echo ok || echo bad");
     if((chk.stdout||"").trim()!=="ok"){
       if(fmMode!=="import") ckSize.textContent=(T.ck_bad||"Not a valid keybox");
@@ -969,6 +1200,10 @@ async function init(){
   });
   ckPick.addEventListener("click",fmOpen);
   ckName.addEventListener("click",fmOpen);
+
+  // Advanced tab: import a pif.json / pif.prop fingerprint (issue #17).
+  const impPifRow=document.getElementById("impPifRow");
+  if(impPifRow) impPifRow.addEventListener("click",()=>fmOpen("pif"));
   ckDel.addEventListener("click",async ()=>{ await ksuExec(`rm -f "${KEYBOX}" "${KBNAME}"`); await ckRefresh(); });
 
   // ---- per-app keybox + mode (Tricky-Addon-style app list) ----
@@ -977,6 +1212,16 @@ async function init(){
   // = ticked, default keybox, auto (forced Google trio defaults to gen).
   (function pak(){
     const MAP=CFG+"/app_keybox.map";
+    // User-added packages (system apps not in `pm list -3` that still run an
+    // integrity check). One package id per line; merged into the app list.
+    const CUSTOM_PKGS=CFG+"/custom_packages";
+    const PLUS_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+    const isPkg=s=>/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(s);
+    // "Unnecessary" apps — root managers, root tools and general apps that don't
+    // check the bootloader, so they never need to be in the attestation target.
+    // Mirrors Tricky-Addon's more-exclude.json (KOWX712), bundled so there's no
+    // runtime dependency on their repo.
+    const EXCLUDE=new Set(["com.topjohnwu.magisk","io.github.vvb2060.magisk","io.github.huskydg.magisk","me.weishu.kernelsu","com.rifsxd.ksunext","com.sukisu.ultra","me.bmax.apatch","me.garfieldhan.apatch.next","org.lsposed.manager","com.termux","bin.mt.plus","bin.mt.plus.canary","xzr.konabess","io.github.a13e300.ksuwebui","moe.shizuku.privileged.api","com.dergoogler.mmrl","com.dergoogler.mmrl.wx","org.swiftapps.swiftbackup","com.google.android.apps.docs.editors.docs","com.google.android.apps.docs.editors.sheets","com.google.android.apps.docs.editors.slides","com.google.android.apps.maps","com.google.android.apps.translate","com.google.android.apps.youtube.music","com.google.android.keep","com.google.android.youtube","com.google.earth","org.zwanoo.android.speedtest","com.android.chrome"]);
     const FORCED=new Set(["com.android.vending","com.google.android.gms","com.google.android.gsf"]);
     const appsEl=document.getElementById("apps"), appsList=document.getElementById("appsList");
     const appsSearch=document.getElementById("appsSearch");
@@ -1002,7 +1247,7 @@ async function init(){
       await ksuExec(`mkdir -p ${shq(CFG)} && printf %s ${shq(body)} > ${shq(MAP)}; sh ${shq(MOD+"/build_target_txt.sh")} ${shq(CFG+"/target.txt")} >/dev/null 2>&1`);
     }
     async function loadApps(){
-      const r=await ksuExec(`{ pm list packages -3; echo com.google.android.gms; echo com.google.android.gsf; echo com.android.vending; } 2>/dev/null | sed 's/^package://' | sort -u`);
+      const r=await ksuExec(`{ pm list packages -3; echo com.google.android.gms; echo com.google.android.gsf; echo com.android.vending; cat ${shq(CUSTOM_PKGS)} 2>/dev/null; } 2>/dev/null | sed 's/^package://' | sort -u`);
       apps=(r.stdout||"").split("\n").map(s=>s.trim()).filter(Boolean);
       // Real app labels via the KSU WebUI package bridge (WebUI-X / KSUWebUIStandalone).
       // Synchronous; absent on the basic host — then rows fall back to the package name.
@@ -1035,10 +1280,18 @@ async function init(){
       return `<span class="app-badge">${esc(s.kb.replace(/\.xml$/i,""))}</span>`;
     }
     function render(){
-      const q=(appsSearch.value||"").toLowerCase().trim();
+      const qraw=(appsSearch.value||"").trim();
+      const q=qraw.toLowerCase();
       const list=q?apps.filter(p=>{ const l=labels[p]||""; return p.toLowerCase().includes(q)||l.toLowerCase().includes(q); }):apps;
-      if(!list.length){ appsList.innerHTML=`<div class="fm-empty">${esc(T.fm_empty||"Empty")}</div>`; return; }
-      let html=""; for(const p of list){
+      // When the query looks like a package id not already in the list, offer an
+      // "Add custom package" row at the top (Tricky-Addon style). Keep the raw
+      // case — Android package ids may contain uppercase.
+      let addRow="";
+      if(qraw && isPkg(qraw) && !apps.some(p=>p.toLowerCase()===q)){
+        addRow=`<div class="fm-item pak-add" data-add="${esc(qraw)}"><div class="app-icon" style="display:flex;align-items:center;justify-content:center;color:var(--accent)">${PLUS_SVG}</div><div class="fm-info"><div class="app-nm">${esc(T.pak_add||"Add custom package")}</div><div class="app-pkg">${esc(qraw)}</div></div></div>`;
+      }
+      if(!list.length){ appsList.innerHTML=addRow||`<div class="fm-empty">${esc(T.fm_empty||"Empty")}</div>`; return; }
+      let html=addRow; for(const p of list){
         const lbl=labels[p];
         const meta=lbl?`<div class="app-nm">${esc(lbl)}</div><div class="app-pkg">${esc(p)}</div>`:`<div class="app-nm">${esc(p)}</div>`;
         html+=`<div class="fm-item" data-pkg="${esc(p)}"><img class="app-icon" data-pkg="${esc(p)}" alt="" draggable="false"><div class="fm-info">${meta}</div>${badge(p)}<div class="app-chk${chkClass(p)}">${CHK}</div></div>`;
@@ -1063,6 +1316,17 @@ async function init(){
     async function toggleTick(pkg){
       if(map[pkg]==="off") delete map[pkg]; else map[pkg]="off";
       render(); await saveMap();
+    }
+
+    // Add a user-typed package id, persist it, and target it (ticked, auto).
+    async function addCustomPkg(pkg){
+      pkg=(pkg||"").trim();
+      if(!isPkg(pkg)){ toast(T.pak_add_bad||"Enter a valid package name",3000); return; }
+      await ksuExec(`mkdir -p ${shq(CFG)} && ( grep -qxF ${shq(pkg)} ${shq(CUSTOM_PKGS)} 2>/dev/null || printf '%s\\n' ${shq(pkg)} >> ${shq(CUSTOM_PKGS)} )`);
+      if(!apps.some(p=>p.toLowerCase()===pkg.toLowerCase())){ apps.push(pkg); apps.sort(); }
+      delete map[pkg];              // ensure ticked (no "off" entry) = default keybox, auto
+      appsSearch.value=""; render(); await saveMap();
+      toast("+ "+pkg,2500);
     }
 
     // ---- long-press: per-app config (mode + keybox) ----
@@ -1112,6 +1376,48 @@ async function init(){
     document.getElementById("appsOk").addEventListener("click",()=>{ appsEl.hidden=true; });
     appsEl.addEventListener("click",e=>{ if(e.target===appsEl) appsEl.hidden=true; });
     appsSearch.addEventListener("input",render);
+
+    // ---- kebab menu (top-right): add package / select all / unselect unnecessary ----
+    const appsMenu=document.getElementById("appsMenu"), appsMenuPop=document.getElementById("appsMenuPop");
+    const pkgDlg=document.getElementById("pkgDlg"), pkgInput=document.getElementById("pkgInput");
+    const menuOpen=o=>{ appsMenuPop.hidden=!o; };
+    appsMenu.addEventListener("click",e=>{ e.stopPropagation(); menuOpen(appsMenuPop.hidden); });
+    document.getElementById("pakRow").addEventListener("click",()=>menuOpen(false));   // reset when reopened
+    appsEl.addEventListener("click",()=>menuOpen(false));                               // any dialog click closes it
+    async function selectAll(){
+      apps.forEach(p=>{ if(map[p]==="off") delete map[p]; });
+      render(); await saveMap();
+      toast(T.pak_selall_done||"All apps selected",2000);
+    }
+    async function unselectUnnecessary(){
+      let n=0;
+      apps.forEach(p=>{ if(EXCLUDE.has(p) && !FORCED.has(p) && map[p]!=="off"){ map[p]="off"; n++; } });
+      render(); await saveMap();
+      toast((T.pak_unnec_done||"Unselected unnecessary apps")+(n?" ("+n+")":""),2500);
+    }
+    appsMenuPop.addEventListener("click",e=>{
+      const b=e.target.closest("button[data-act]"); if(!b) return;
+      const act=b.dataset.act; menuOpen(false);
+      if(act==="selall") selectAll();
+      else if(act==="unnec") unselectUnnecessary();
+      else if(act==="add"){ pkgInput.value=""; pkgDlg.hidden=false; setTimeout(()=>pkgInput.focus(),60); }
+    });
+    // add-custom-package dialog
+    const pkgClose=()=>{ pkgDlg.hidden=true; };
+    document.getElementById("pkgCancel").addEventListener("click",pkgClose);
+    pkgDlg.addEventListener("click",e=>{ if(e.target===pkgDlg) pkgClose(); });
+    const pkgSubmit=async()=>{
+      const v=(pkgInput.value||"").trim();
+      if(!isPkg(v)){ toast(T.pak_add_bad||"Enter a valid package name",3000); return; }
+      pkgClose(); await addCustomPkg(v);
+    };
+    document.getElementById("pkgOk").addEventListener("click",pkgSubmit);
+    pkgInput.addEventListener("keydown",e=>{ if(e.key==="Enter") pkgSubmit(); });
+    // "Add custom package" row (not a real app row, so the tap-gesture handlers
+    // below ignore it) — commit it on click.
+    appsList.addEventListener("click",e=>{
+      const add=e.target.closest(".pak-add"); if(add) addCustomPkg(add.dataset.add);
+    });
 
     // gesture: short tap -> toggle spoof tick; long-press -> per-app config
     let lpTimer=null, downPkg=null;

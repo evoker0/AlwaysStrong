@@ -19,27 +19,48 @@ engine_pif_targets() {
     echo "$MODPATH/pif.prop $CONFIG_DIR/pif.prop"
 }
 
-# STRONG spoof settings in this engine's naming.
+# STRONG spoof defaults, in this engine's naming (inject-s uses true/false).
 #   spoofProvider=false      leave the keystore provider alone — TEESimulator
 #                            supplies the hardware-attested one STRONG needs.
 #   spoofVendingBuild=true   Play Store build spoof (Fork calls this
 #                            spoofVendingFinger).
-engine_spoof_kv() {
-    echo "spoofBuild=true spoofProps=true spoofProvider=false \
-          spoofSignature=false spoofVendingBuild=true spoofVendingSdk=false"
+# Any of these can be overridden per-key from the WebUI Advanced tab, which
+# writes `key=value` lines into /data/adb/tricky_store/spoof.conf. Some wallet /
+# banking apps only pass with a flag flipped (e.g. spoofProps=false on a Poco F8
+# Pro). engine_enforce_spoof re-applies these on every boot/hourly pass, so an
+# override in spoof.conf survives — without it a flipped flag would silently
+# revert an hour after boot.
+engine_spoof_defaults() {
+    # spoofVendingBuild spoofs the Play Store (Vending) build/fingerprint — the
+    # inject-s equivalent of Fork's spoofVendingFinger. On Android 10–12L (device's
+    # REAL sdk ≤ 32) it breaks Play Integrity / GMS, so it defaults OFF there; on
+    # Android 13+ (sdk 33+) it stays ON. Keyed on the real android version, not the
+    # spoofed one. spoof.conf can still override it per device (WebUI Advanced tab).
+    _svb=true
+    _sdk=$(getprop ro.build.version.sdk 2>/dev/null)
+    case "$_sdk" in ''|*[!0-9]*) : ;; *) [ "$_sdk" -le 32 ] && _svb=false ;; esac
+    echo "spoofBuild=true spoofProps=true spoofProvider=false spoofSignature=false spoofVendingBuild=$_svb spoofVendingSdk=false DEBUG=false"
 }
 
-# Spoof block appended to a freshly fetched fingerprint.
+# Effective value for a spoof key: the spoof.conf override if present, else the
+# STRONG default passed in $2.
+engine_spoof_val() {
+    _ov=$(sed -n "s/^$1=//p" "$CONFIG_DIR/spoof.conf" 2>/dev/null | head -1 | tr -d ' \t\r')
+    [ -n "$_ov" ] && echo "$_ov" || echo "$2"
+}
+
+# Space-separated key=value list with overrides applied (for engine_enforce_spoof).
+engine_spoof_kv() {
+    _out=""
+    for _kv in $(engine_spoof_defaults); do
+        _out="$_out ${_kv%=*}=$(engine_spoof_val "${_kv%=*}" "${_kv#*=}")"
+    done
+    echo $_out
+}
+
+# Same list, one per line — appended to a freshly fetched fingerprint.
 engine_spoof_block() {
-    cat <<'EOF'
-spoofBuild=true
-spoofProps=true
-spoofProvider=false
-spoofSignature=false
-spoofVendingBuild=true
-spoofVendingSdk=false
-DEBUG=false
-EOF
+    for _kv in $(engine_spoof_kv); do echo "$_kv"; done
 }
 
 # engine_install_pif SRC — put a fingerprint where the zygisk reads it. The

@@ -1,0 +1,1 @@
+[PIF-less / Lite build] Hardware attestation (TEESimulator-RS) + automated keybox updates, with NO PlayIntegrityFork. For devices where the bundled PIF conflicts with Google Mobile Services. No fingerprint spoof — pair it with your own fingerprint solution if you need one.

@@ -12,6 +12,13 @@ cd "$MODPATH" 2>/dev/null
 set +o standalone 2>/dev/null
 unset ASH_STANDALONE
 
+# Boot auto-press sets AS_FAST=1: all the sleeps below are cosmetic progress
+# pacing for the WebUI/terminal, and nothing is watching the output at boot, so
+# skip them to reach STRONG as soon as the device is up. Every sleep in this
+# script is UI-only (fetches are bounded by `timeout`, not sleep), and the helper
+# scripts it calls run in their own `sh` and keep their real retry delays.
+if [ "${AS_FAST:-0}" = "1" ]; then sleep() { :; }; fi
+
 # `action.sh logs` — dump a diagnostic bundle for a GitHub issue and exit.
 if [ "$1" = "logs" ] && [ -x "$MODPATH/collect_logs.sh" ]; then
     p=$(sh "$MODPATH/collect_logs.sh")
@@ -115,6 +122,27 @@ else
 fi
 sleep 1
 
+if [ "$ENGINE" = "none" ]; then
+# PIF-less "Lite" line: no fingerprint spoof of our own. If the user runs a
+# standalone PlayIntegrityFork, sync its fingerprint into the attested identity and
+# re-assert the STRONG spoof flags it resets; otherwise it's attestation + keybox only.
+# lite_pif_sync identifies the standalone module (only real PlayIntegrityFork /
+# PlayIntegrityFix inject-s qualify — an Integrity Box or other id-squatter is left
+# alone) and prints the kind. Report exactly what it synced, or fall back to the
+# plain PIF-less message.
+# On Lite the standalone PIF owns the fingerprint (AlwaysStrong only mirrors it into
+# the attested identity), so point the user at that module's own WebUI to change it.
+_synced=$(sh "$MODPATH/lite_pif_sync.sh" 2>/dev/null)
+case "$_synced" in
+    "OK fork")   row "🔗" "synced with PlayIntegrityFork"
+                 row "⚙️" "set fingerprint in Fork's WebUI" ;;
+    "OK inject") row "🔗" "synced with PlayIntegrityFix (inject)"
+                 row "⚙️" "set fingerprint in inject's WebUI" ;;
+    *)           row "🚫" "PIF-less build"
+                 row "🛡️" "attestation + keybox only" ;;
+esac
+sleep 1
+else
 # --- Step 3: Fingerprint ---
 # Three sources, tried in order: our native crawl, upstream's own fetcher, then
 # the two shipped static props. Each hands its result to the engine adapter, so
@@ -211,6 +239,7 @@ sleep 1
 # --- Step 5: Device ---
 row "📱" "${MD:-unknown}"
 sleep 1
+fi
 
 # --- Restart PI + status ---
 killall -9 com.google.android.gms.unstable 2>/dev/null

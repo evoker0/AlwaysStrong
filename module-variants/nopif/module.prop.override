@@ -1,0 +1,6 @@
+# module.prop keys this line overrides, applied by build.sh after module/ is
+# staged. version / versionCode / id are not overridable — they stay defined
+# once, in module/module.prop.
+name=AlwaysStrong [Lite]
+updateJson=https://raw.githubusercontent.com/evoker0/AlwaysStrong/main/update-nopif.json
+description=[PIF-less / Lite] Hardware attestation + auto keybox updates, no PlayIntegrityFork. For setups where the bundled PIF conflicts with Google Mobile Services.

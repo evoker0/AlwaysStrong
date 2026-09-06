@@ -49,16 +49,16 @@ case "$(uname -m)" in
 esac
 ASFETCH="$SELF_DIR/bin/$ABI/asfetch"
 BB=""
-for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox \
-          /data/adb/modules/busybox-ndk/system/*/busybox; do
-    [ -x "$bb" ] && BB="$bb" && break
+for bb in /data/adb/ksu/bin/busybox /data/adb/magisk/busybox /data/adb/ap/bin/busybox \
+          /data/adb/modules/busybox-ndk/system/*/busybox "$(command -v busybox 2>/dev/null)"; do
+    [ -n "$bb" ] && [ -x "$bb" ] && BB="$bb" && break
 done
 
 # run_engine NAME OUTFILE URL — one download attempt with the named engine.
 run_engine() {
     rm -f "$2"
     case "$1" in
-        asfetch) [ -n "$ABI" ] && [ -x "$ASFETCH" ] && "$ASFETCH" -T 10 -o "$2" "$3" 2>/dev/null ;;
+        asfetch) [ -n "$ABI" ] && [ -f "$ASFETCH" ] && { [ -x "$ASFETCH" ] || chmod 0755 "$ASFETCH" 2>/dev/null; } && "$ASFETCH" -T 10 -o "$2" "$3" 2>/dev/null ;;
         bb)      [ -n "$BB" ] && "$BB" wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
         curl)    command -v curl >/dev/null 2>&1 && curl -fsSL --connect-timeout 10 --max-time 30 -o "$2" "$3" 2>/dev/null ;;
         wget)    command -v wget >/dev/null 2>&1 && wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;

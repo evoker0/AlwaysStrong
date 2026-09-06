@@ -1,12 +1,21 @@
 name: Release
 
-# Tag a version (e.g. `git tag v1.0.3 && git push origin v1.0.3`) and this
-# builds the installable zips on GitHub's runners and attaches them to the
-# release. They are produced from source here — never uploaded by hand.
+# Tag a version (e.g. `git tag v1.0.4 && git push origin v1.0.4`) and this builds
+# every installable zip on GitHub's runners and attaches them to the release.
+# They are produced from source here — never uploaded by hand.
 #
-# One tag ships both release lines, both built from this tree:
-#   AlwaysStrong-<ver>.zip         PlayIntegrityFork
-#   AlwaysStrong-<ver>-inject.zip  PlayIntegrityFix inject-s
+# One tag ships the whole matrix (3 PI lines × 3 keystore engines), all from this
+# tree. TEESimulator-RS = plain name, TrickyStoreOSS = -TSOSS, TEESimulator
+# (JingMatrix) = -TEESIM:
+#   AlwaysStrong-<ver>.zip                 PlayIntegrityFork  + TEESimulator-RS
+#   AlwaysStrong-<ver>-inject.zip          PlayIntegrityFix   + TEESimulator-RS
+#   AlwaysStrong-<ver>-nopif.zip           PIF-less / Lite    + TEESimulator-RS
+#   AlwaysStrong-<ver>-TSOSS.zip           PlayIntegrityFork  + TrickyStoreOSS
+#   AlwaysStrong-<ver>-inject-TSOSS.zip    PlayIntegrityFix   + TrickyStoreOSS
+#   AlwaysStrong-<ver>-nopif-TSOSS.zip     PIF-less / Lite    + TrickyStoreOSS
+#   AlwaysStrong-<ver>-TEESIM.zip          PlayIntegrityFork  + TEESimulator (JingMatrix)
+#   AlwaysStrong-<ver>-inject-TEESIM.zip   PlayIntegrityFix   + TEESimulator (JingMatrix)
+#   AlwaysStrong-<ver>-nopif-TEESIM.zip    PIF-less / Lite    + TEESimulator (JingMatrix)
 
 on:
   push:
@@ -37,8 +46,14 @@ jobs:
         # sources makes build.sh package them as-is instead of needing Rust+NDK.
         run: find native -path '*/prebuilt/*' -type f -exec touch {} +
 
-      - name: Build both module zips
+      - name: Build the TEESimulator-RS lines (fork, inject, nopif)
         run: bash build.sh
+
+      - name: Build the TrickyStoreOSS lines (fork, inject, nopif)
+        run: bash build.sh --engine trickystoreoss
+
+      - name: Build the TEESimulator (JingMatrix) lines (fork, inject, nopif)
+        run: bash build.sh --engine teesim
 
       - name: Release notes from CHANGELOG
         run: |
@@ -60,9 +75,13 @@ jobs:
           fail_on_unmatched_files: true
 
       - name: Point the update manifests at this release
-        # Installed modules poll update.json / update-inject.json, so they have
-        # to name a release that already exists — hence this runs after publish.
-        # Never fails the release: a bad push here costs an edit, not the build.
+        # Installed modules poll their updateJson, so it has to name a release
+        # that already exists — hence this runs after publish. Never fails the
+        # release: a bad push here costs an edit, not the build.
+        #
+        # Only the three TEESimulator-RS lines carry an updateJson (fork ->
+        # update.json, inject -> update-inject.json, nopif -> update-nopif.json).
+        # The -TSOSS zips are manual/advanced downloads and are not auto-updated.
         continue-on-error: true
         run: |
           set -eu
@@ -73,20 +92,20 @@ jobs:
             exit 0
           fi
           git checkout main
-          # both lines carry the same version — module/module.prop defines it once
+          # all lines carry the same version — module/module.prop defines it once
           ver=$(sed -n 's/^version=//p' module/module.prop)
           code=$(sed -n 's/^versionCode=//p' module/module.prop)
           write_manifest() {
+            # $1 manifest file, $2 zip file name
             printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "zipUrl": "https://github.com/%s/releases/download/%s/%s",\n  "changelog": "https://raw.githubusercontent.com/%s/main/CHANGELOG.md"\n}\n' \
               "$ver" "$code" "$GITHUB_REPOSITORY" "$tag" "$2" "$GITHUB_REPOSITORY" > "$1"
           }
-          fork_zip=$(cd out && ls AlwaysStrong-*.zip | grep -v -- '-inject' | head -1)
-          inj_zip=$(cd out && ls AlwaysStrong-*-inject.zip 2>/dev/null | head -1 || true)
-          write_manifest update.json "$fork_zip"
-          [ -n "$inj_zip" ] && write_manifest update-inject.json "$inj_zip"
+          write_manifest update.json        "AlwaysStrong-${ver}.zip"
+          write_manifest update-inject.json "AlwaysStrong-${ver}-inject.zip"
+          write_manifest update-nopif.json  "AlwaysStrong-${ver}-nopif.zip"
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add update.json update-inject.json
+          git add update.json update-inject.json update-nopif.json
           git diff --cached --quiet && { echo "manifests already current"; exit 0; }
           git commit -m "chore: point update manifests at $tag"
           git push origin main

@@ -69,11 +69,21 @@ resetprop_if_diff ro.debuggable 0
 resetprop_if_diff ro.force.debuggable 0
 resetprop_if_diff ro.secure 1
 
-# Strip custom-ROM build leaks (LineageOS, etc.) — they're a tell to PI
-for PROP in ro.lineage.build.version ro.lineage.version ro.lineage.display.version \
-            ro.modversion ro.cm.version; do
-    delprop_if_exist "$PROP" 2>/dev/null || true
-done
+# Strip custom-ROM build leaks (LineageOS, crDroid, etc.). These props are a
+# tell to PI, BUT they are also what Settings → About phone reads to show the
+# ROM version. Play Integrity relies on the fingerprint / bootloader / keybox
+# and the zygisk's per-process Build.* spoof — NOT on these globally-visible
+# props — so deleting them device-wide buys almost no integrity while it breaks
+# the ROM-version display (shows "unknown"). Preserve them by default; only
+# scrub when the user opts in via the WebUI Advanced tab.
+#   Opt-in:  touch /data/adb/tricky_store/hide_rom_markers
+if [ -f /data/adb/tricky_store/hide_rom_markers ]; then
+    for PROP in ro.lineage.build.version ro.lineage.version ro.lineage.display.version \
+                ro.modversion ro.cm.version \
+                ro.crdroid.version ro.crdroid.display.version ro.crdroid.build.version; do
+        delprop_if_exist "$PROP" 2>/dev/null || true
+    done
+fi
 
 # Disable ROM-level spoof engines (PixelPropsUtils / pihooks / entryhooks)
 # before GMS starts. Gated by /data/adb/tricky_store/no_rom_spoof_block flag.

@@ -1,9 +1,10 @@
 name: Nightly
 
 # Nightly test builds, uploaded as GitHub Actions ARTIFACTS — never a release.
-# This is the only place the alternative keystore engines are built for people
-# to grab: tagged releases ship the TEESimulator-RS build (fork + inject) only;
-# the TrickyStoreOSS build lives here, in nightly, and nowhere in the releases.
+# These are bleeding-edge snapshots off main between releases; the tagged/auto
+# releases already publish the full 9-zip matrix (all three keystore engines:
+# TEESimulator-RS, TrickyStoreOSS, and TEESimulator/JingMatrix). Use nightly to
+# test the latest main before a release is cut.
 #
 # Grab a build from the run's "Artifacts" section (Actions tab), or:
 #   gh run download -R <owner>/<repo> --name AlwaysStrong-nightly
@@ -32,8 +33,11 @@ jobs:
       - name: Build the release lines (TEESimulator-RS)
         run: bash build.sh
 
-      - name: Build the TrickyStoreOSS lines (nightly-only)
+      - name: Build the TrickyStoreOSS lines
         run: bash build.sh --engine trickystoreoss
+
+      - name: Build the TEESimulator (JingMatrix) lines
+        run: bash build.sh --engine teesim
 
       - name: List what was built
         run: ls -la out/

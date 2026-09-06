@@ -36,18 +36,23 @@ for proc in TEESimulator supervisor daemon ta-enhanced TrickyStoreOSS; do
 done
 pkill -9 -f TEESimulator 2>/dev/null || true
 
-# --- conflict cleanup (19 known modules) ---------------------------------
-CONFLICTS=0
-for c in \
-  playintegrityfix playintegrityfork play_integrity_fix \
-  playcurl playcurlNEXT \
-  tricky_store_v2 TrickyStore \
+# --- conflict cleanup ----------------------------------------------------
+# Keystore / TEE / target-list / prop modules always conflict with the
+# attestation engine. The PIF-family (Build spoof) only conflicts with a line
+# that bundles its own PlayIntegrityFork — the PIF-less "Lite" line ships none and
+# is meant to run alongside the user's own PIF, so Lite does NOT remove them.
+CONFLICT_LIST="tricky_store_v2 TrickyStore \
   tee_simulator TEESimulator TEESimulator-RS \
   safetynet-fix Universal_SafetyNet_Fix \
   MagiskHidePropsConf \
   TA_utl tricky_addon TA_enhanced tsupport-advance \
-  Yurikey \
-  pif_strong pif_force ; do
+  Yurikey specter"
+case "$NAME" in
+  *"[Lite]"*) ui_print "- Lite build — keeping any standalone PlayIntegrityFork" ;;
+  *) CONFLICT_LIST="$CONFLICT_LIST playintegrityfix playintegrityfork play_integrity_fix playcurl playcurlNEXT pif_strong pif_force" ;;
+esac
+CONFLICTS=0
+for c in $CONFLICT_LIST ; do
   cp_dir="/data/adb/modules/$c"
   if [ -d "$cp_dir" ] && [ "$(basename "$cp_dir")" != "$(basename "$MODPATH")" ]; then
     CONFLICTS=$((CONFLICTS+1))
@@ -57,6 +62,18 @@ for c in \
   fi
   [ -d "/data/adb/modules_update/$c" ] && rm -rf "/data/adb/modules_update/$c" 2>/dev/null
 done
+# MeowDump's "Integrity Box" ships under the SAME id as osm0sis PlayIntegrityFork
+# (playintegrityfix). The Lite line keeps the plain Fork but must still drop
+# Integrity Box (a full keystore/attestation toolkit) — told apart by module.prop.
+_ib=/data/adb/modules/playintegrityfix
+if [ -d "$_ib" ] && [ "$(basename "$_ib")" != "$(basename "$MODPATH")" ] \
+   && grep -qiE 'MeowDump|Integrity-Box|integrity-box|webuiIcon' "$_ib/module.prop" 2>/dev/null; then
+  CONFLICTS=$((CONFLICTS+1))
+  [ -f "$_ib/uninstall.sh" ] && sh "$_ib/uninstall.sh" 2>/dev/null || true
+  touch "$_ib/disable" "$_ib/remove"
+  rm -rf "$_ib" /data/adb/modules_update/playintegrityfix 2>/dev/null
+  ui_print "- removed Integrity Box (shares the playintegrityfix id)"
+fi
 if [ $CONFLICTS -eq 0 ]; then
   ui_print "no conflicting modules"
 else
@@ -75,6 +92,7 @@ for f in module.prop service.sh post-fs-data.sh action.sh \
          keybox_fetch.sh build_target_txt.sh status_fetch.sh description.txt \
          rom_spoof_block.sh conflict_scan.sh sync_patch.sh \
          pif_native_fetch.sh prop_unify.sh logcat_cleanup.sh collect_logs.sh \
+         import_pif.sh reapply_spoof.sh lite_pif_sync.sh \
          pif_fallback_1.prop pif_fallback_2.prop \
          target.txt daemon \
          $ENGINE_FILES ; do
@@ -101,6 +119,14 @@ attest_install
 # PlayIntegrityFix inject-s is ARM-only, so on x86 that build has no zygisk to
 # install — the TEE half still runs, the Play Integrity spoof can't, and the
 # install says so rather than half-working in silence.
+#
+# A PIF-less "Lite" line (engine.sh sets ENGINE=none) ships no zygisk and no
+# classes.dex at all — only the TEE/TSOSS attestation + keybox fetcher. Skip the
+# whole Play Integrity install for it.
+if [ "$ENGINE" = "none" ]; then
+  ui_print "PIF-less build — hardware attestation + keybox only"
+  ui_print "no Play Integrity fingerprint spoof in this build"
+else
 mkdir -p "$MODPATH/zygisk"
 ZN=0
 for z in arm64-v8a armeabi-v7a x86 x86_64; do
@@ -124,11 +150,13 @@ if [ $HAS_ZYGISK_SO -eq 0 ]; then
 # quietly fails. Magisk / APatch ship (or host) Zygisk themselves. Warn only on
 # the real footgun to avoid false alarms.
 elif [ "$KSU" = "true" ] \
-     && [ ! -d /data/adb/modules/zygisksu ] && [ ! -d /data/adb/modules/rezygisk ]; then
-  ui_print "⚠️ KernelSU without Zygisk Next / ReZygisk"
+     && [ ! -d /data/adb/modules/zygisksu ] && [ ! -d /data/adb/modules/rezygisk ] \
+     && [ ! -d /data/adb/modules/neozygisk ]; then
+  ui_print "⚠️ KernelSU without Zygisk Next / ReZygisk / NeoZygisk"
   ui_print "⚠️ install one or PIF spoof won't load (no STRONG)"
 else
   ui_print "zygisk found"
+fi
 fi
 
 # --- aswatcher native binary (inotify target.txt + Xposed exclude + conflict)

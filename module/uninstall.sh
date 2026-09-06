@@ -27,8 +27,24 @@ rm -f "$CONFIG_DIR/boot_hash.bin" "$CONFIG_DIR/boot_key.bin"
 # Global PIF prop we dropped for the TEE PatchLevelManager (sync_patch.sh)
 rm -f /data/adb/pif.prop
 
-# Remove any stale playintegrityfix folder left by older shim-based builds
-rm -rf /data/adb/modules/playintegrityfix 2>/dev/null
+# A stale playintegrityfix folder from a very old shim-based AlwaysStrong build
+# can be cleaned up here — but this exact path is ALSO where a user's OWN
+# standalone PlayIntegrityFork / Fix inject-s lives (the module id is shared, and
+# the "Lite" line depends on that separate module). Never delete the user's real
+# module on uninstall: on the Lite line (ENGINE=none) the folder is always theirs,
+# and on any line a folder whose module.prop identifies a real Fork / Fix inject-s
+# / Integrity Box is theirs too. Only remove a folder that is clearly not a live
+# third-party module (a true leftover shim with no recognizable module.prop).
+PIF_MOD=/data/adb/modules/playintegrityfix
+if [ -d "$PIF_MOD" ]; then
+    keep_pif=0
+    [ -f "$MODDIR/engine.sh" ] && grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null && keep_pif=1
+    if [ "$keep_pif" = 0 ] && [ -f "$PIF_MOD/module.prop" ]; then
+        grep -qiE 'Fork|osm0sis|PlayIntegrityFix|inject|chiteroman|KOWX712|MeowDump|ntegrity.?[Bb]ox|webuiIcon' \
+            "$PIF_MOD/module.prop" 2>/dev/null && keep_pif=1
+    fi
+    [ "$keep_pif" = 0 ] && rm -rf "$PIF_MOD" 2>/dev/null
+fi
 
 # Restore ROM-level spoof engines that rom_spoof_block.sh disabled, so removing
 # AlwaysStrong frees the ROM's own PixelProps / pihooks / entryhooks again.

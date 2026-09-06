@@ -20,3 +20,6 @@ tmp_*
 *.tmp
 *.log
 .aswebui.apk
+
+# upstream-update change summary (regenerated each run by update-upstream.sh)
+.upstream-changes.txt

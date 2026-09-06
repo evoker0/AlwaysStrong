@@ -4,12 +4,14 @@
 // busybox `wget`, whose built-in TLS stalls mid-stream on some CDNs. A
 // statically-linked rustls client speaks TLS 1.2/1.3 correctly there.
 //
-// Why it's hand-rolled instead of using an HTTP crate: generic resolvers hand
-// back AAAA (IPv6) addresses first, and on the very common "IPv4-only data
-// connection that still advertises IPv6 in DNS" case, a client that tries the
-// IPv6 address first blocks the entire request on an unroutable SYN and never
-// reaches the working IPv4 address. We therefore resolve ourselves and connect
-// IPv4-first with a short per-address timeout (falling through to IPv6).
+// Why it's hand-rolled instead of using an HTTP crate: connectivity on real
+// phones is lopsided in both directions — an IPv4-only data link that still
+// advertises AAAA, and an IPv6-only / NAT64 link where the IPv4 addresses are the
+// dead ones. A client that commits to one family first hangs on the unroutable
+// SYN and never reaches the working address. We resolve every address ourselves
+// and race IPv4 + IPv6 concurrently (Happy-Eyeballs), taking the first socket that
+// connects. main() also retries once on the opposite scheme (https <-> http), so
+// a blocked :443 or an http-only path still lands the download.
 //
 // Usage:  asfetch URL [-o|-O FILE] [-A USER_AGENT] [-H "Key: Value"]... [-T SECONDS]
 //   no -o  -> body is written to stdout
@@ -56,8 +58,14 @@ fn parse_url(u: &str) -> Option<Url> {
     Some(Url { https, host, port, path: path.to_string() })
 }
 
-// Resolve host:port, IPv4 addresses first then IPv6.
-fn resolve_v4first(host: &str, port: u16) -> Vec<SocketAddr> {
+// Resolve host:port to every address, IPv4 and IPv6 interleaved so both families
+// are represented up front. We used to return IPv4-only-first and connect
+// sequentially; that fixed the "IPv4-only link that still advertises AAAA" hang
+// but broke the mirror image of it — an IPv6-only / NAT64 mobile data connection,
+// where the IPv4 addresses are the dead ones and burning their timeouts first
+// could sink the whole fetch. Interleaving + the concurrent connect below make
+// both directions work.
+fn resolve_all(host: &str, port: u16) -> Vec<SocketAddr> {
     let mut v4 = Vec::new();
     let mut v6 = Vec::new();
     if let Ok(iter) = (host, port).to_socket_addrs() {
@@ -69,15 +77,45 @@ fn resolve_v4first(host: &str, port: u16) -> Vec<SocketAddr> {
             }
         }
     }
-    v4.extend(v6);
-    v4
+    let mut out = Vec::with_capacity(v4.len() + v6.len());
+    let (mut i, mut j) = (0usize, 0usize);
+    while i < v4.len() || j < v6.len() {
+        if i < v4.len() {
+            out.push(v4[i]);
+            i += 1;
+        }
+        if j < v6.len() {
+            out.push(v6[j]);
+            j += 1;
+        }
+    }
+    out
 }
 
-// Try each address (IPv4 first) with a short timeout; return the first that connects.
+// Connect to whichever address answers first, racing IPv4 and IPv6 concurrently
+// (Happy-Eyeballs style). A dead address family — IPv4 on an IPv6-only data
+// connection, or an AAAA that doesn't route — no longer blocks the request behind
+// a full per-address timeout: every candidate dials in its own thread and the
+// first successful socket wins; the losers are abandoned.
 fn connect(addrs: &[SocketAddr], per_timeout: Duration) -> std::io::Result<TcpStream> {
-    let mut last = std::io::Error::new(std::io::ErrorKind::Other, "no addresses resolved");
-    for a in addrs {
-        match TcpStream::connect_timeout(a, per_timeout) {
+    use std::sync::mpsc;
+    if addrs.is_empty() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "no addresses resolved",
+        ));
+    }
+    let (tx, rx) = mpsc::channel();
+    for a in addrs.iter().cloned() {
+        let tx = tx.clone();
+        std::thread::spawn(move || {
+            let _ = tx.send(TcpStream::connect_timeout(&a, per_timeout));
+        });
+    }
+    drop(tx); // so rx closes once every dialer thread has reported
+    let mut last = std::io::Error::new(std::io::ErrorKind::Other, "connect failed");
+    while let Ok(r) = rx.recv() {
+        match r {
             Ok(s) => return Ok(s),
             Err(e) => last = e,
         }
@@ -201,6 +239,19 @@ fn redirect_target(cur: &Url, loc: &str) -> Option<String> {
     }
 }
 
+// Swap a URL's scheme (https <-> http) for the one-shot retry in main(): some
+// networks/devices break one scheme (TLS MITM, a blocked :443, an http-only
+// captive relay) while the other works. Returns None for a scheme-less URL.
+fn swap_scheme(u: &str) -> Option<String> {
+    if let Some(rest) = u.strip_prefix("https://") {
+        Some(format!("http://{rest}"))
+    } else if let Some(rest) = u.strip_prefix("http://") {
+        Some(format!("https://{rest}"))
+    } else {
+        None
+    }
+}
+
 fn fetch(
     start_url: &str,
     ua: &str,
@@ -211,7 +262,7 @@ fn fetch(
     let mut current = start_url.to_string();
     for _ in 0..8 {
         let url = parse_url(&current).ok_or_else(|| format!("bad url: {current}"))?;
-        let addrs = resolve_v4first(&url.host, url.port);
+        let addrs = resolve_all(&url.host, url.port);
         if addrs.is_empty() {
             return Err(format!("{}: could not resolve", url.host));
         }
@@ -272,7 +323,7 @@ fn diag(url: &str) {
     };
     eprintln!("diag: target {}:{}", u.host, u.port);
     let t = Instant::now();
-    let addrs = resolve_v4first(&u.host, u.port);
+    let addrs = resolve_all(&u.host, u.port);
     eprintln!("diag: resolve in {:?} -> {:?}", t.elapsed(), addrs);
     for a in addrs {
         let t2 = Instant::now();
@@ -348,9 +399,23 @@ fn main() {
 
     let body = match fetch(&url, &ua, &headers, Duration::from_secs(timeout)) {
         Ok(b) => b,
-        Err(e) => {
-            eprintln!("asfetch: {url}: {e}");
-            exit(1);
+        Err(e1) => {
+            // Retry once on the other scheme before giving up, so a device that
+            // can reach the mirror over http but not https (or vice-versa) still
+            // gets the keybox.
+            match swap_scheme(&url) {
+                Some(alt) => match fetch(&alt, &ua, &headers, Duration::from_secs(timeout)) {
+                    Ok(b) => b,
+                    Err(e2) => {
+                        eprintln!("asfetch: {url}: {e1}; retry {alt}: {e2}");
+                        exit(1);
+                    }
+                },
+                None => {
+                    eprintln!("asfetch: {url}: {e1}");
+                    exit(1);
+                }
+            }
         }
     };
 

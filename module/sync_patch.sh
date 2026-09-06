@@ -36,8 +36,16 @@ done
 # level + resetprops ro.build.version.security_patch from this file, keeping
 # the keystore attestation in lock-step with the Build/* fingerprint PIF
 # spoofs. (The module-folder path it also checks no longer exists by design.)
-if [ -n "$SRC" ] && [ "$SRC" != "/data/adb/pif.prop" ]; then
-    cp -f "$SRC" /data/adb/pif.prop 2>/dev/null && chmod 644 /data/adb/pif.prop 2>/dev/null
+# Only TEESimulator-RS's PatchLevelManager reads this global path. On the
+# TrickyStoreOSS / TEESimulator(JingMatrix) engines it would just be a stray,
+# world-readable copy of the spoofed pif, so write it only when RS is active —
+# and clear any stale copy left from a previous engine.
+if grep -q '^ATTEST=tee$' "$MODPATH/attest.sh" 2>/dev/null; then
+    if [ -n "$SRC" ] && [ "$SRC" != "/data/adb/pif.prop" ]; then
+        cp -f "$SRC" /data/adb/pif.prop 2>/dev/null && chmod 644 /data/adb/pif.prop 2>/dev/null
+    fi
+else
+    rm -f /data/adb/pif.prop 2>/dev/null
 fi
 # fall back to whatever the device already reports
 [ -z "$SP" ] && SP=$(getprop ro.build.version.security_patch 2>/dev/null)
@@ -71,8 +79,19 @@ done
 
 # --- 3. real system props (boot only — needs resetprop) -------------------
 # Belt-and-suspenders for non-hooked readers (getprop, apps PIF doesn't hook).
-# Only touch props that already exist so we don't invent phantom ones.
-if [ "$MODE" = "boot" ] && command -v resetprop >/dev/null 2>&1; then
+#
+# OFF BY DEFAULT. Overwriting the global ro.*.security_patch props device-wide
+# makes Settings → About phone show the spoofed patch date and freezes it there
+# even after an OTA bumps the real patch (reported: "alters the security patch
+# date and never updates it"). Play Integrity reads the patch through the
+# zygisk's per-process spoof (*.security_patch in the pif) and the hardware
+# attestation reads security_patch.txt — both handled above and both stay in
+# lock-step with the fingerprint — so the global props are not needed for a
+# STRONG verdict. Leaving them native lets Settings show the true patch and
+# follow OTA updates. Only rewrite them when the user opts in.
+#   Opt-in:  touch /data/adb/tricky_store/spoof_patch_props
+if [ "$MODE" = "boot" ] && [ -f "$CONFIG_DIR/spoof_patch_props" ] && \
+   command -v resetprop >/dev/null 2>&1; then
     for p in ro.build.version.security_patch \
              ro.vendor.build.security_patch \
              ro.system.build.version.security_patch; do

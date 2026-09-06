@@ -98,6 +98,9 @@ resetprop_if_diff service.adb.root 0
 resetprop_if_diff ro.boot.vbmeta.invalidate_on_error yes
 
 # --- LineageOS prop scrub (hide derivative-ROM markers from PI checks) ---
+# Low-risk cosmetic strips (vendor name prefix, Aperture camera package list)
+# run always — they don't affect any Settings UI. The riskier deletes that can
+# break ROM features are gated behind the opt-in hide_rom_markers flag.
 LV=$(getprop ro.product.vendor.name 2>/dev/null)
 case "$LV" in
     lineage_*) resetprop -n ro.product.vendor.name "${LV#lineage_}" ;;
@@ -113,13 +116,17 @@ for LP in vendor.camera.aux.packagelist persist.vendor.camera.privapp.list; do
             ;;
     esac
 done
-# Lineage Health HAL: the tell is the property NAME (it carries "lineage"), not
-# the running service. Charging control reaches the HAL over binder
-# (vendor.lineage.health.IChargingControl) and never reads init.svc.*, so
-# dropping the prop hides the ROM marker while charge limiting keeps working.
-# We used to `stop` the service too (inherited from specter) — that killed the
-# feature for no gain. See issue #7.
-resetprop --delete init.svc.vendor.lineage_health 2>/dev/null
+# Lineage Health HAL: LineageOS Settings shows the "Fast charging" / charging
+# control toggles only when init.svc.vendor.lineage_health reports "running";
+# deleting the prop makes Settings believe the HAL is down and HIDES the whole
+# toggle (reported on LineageOS — the fast-charging switch disappears). The
+# "lineage" in the prop name is a PI tell, but PI doesn't read init.svc.*, so
+# dropping it costs the user a real feature for no integrity gain. Preserve by
+# default; only delete when the user opts into aggressive marker hiding. See
+# issue #7.
+#   Opt-in:  touch /data/adb/tricky_store/hide_rom_markers
+[ -f "$CONFIG_DIR/hide_rom_markers" ] && \
+    resetprop --delete init.svc.vendor.lineage_health 2>/dev/null
 }&
 
 # --- Conflict re-scan on every boot ---
@@ -136,19 +143,30 @@ fi
 # --- Wait for boot, then start TEE simulator ---
 while [ "$(getprop sys.boot_completed)" != "1" ]; do sleep 2; done
 
-# Kill any stale TEE / aswatcher processes from a previous boot. TrickyStoreOSS is
-# NOT in this list: when its engine is active it was already started early
-# (above), so killing it here would nuke the live daemon.
-for proc in TEESimulator supervisor daemon aswatcher; do
+# Kill stale TEE / aswatcher processes from a previous service run. Two engines
+# do NOT belong in this sweep because their live daemon was already started early
+# (above) and killing it would drop a keystore2 injection that a post-boot restart
+# can't cleanly recover:
+#   - TrickyStoreOSS: its process names aren't listed here, so it's already safe.
+#   - TEESimulator (JingMatrix, teesim): its daemon carries the name "TEESimulator"
+#     (the same name the RS daemon uses), so the name-based kill would catch the
+#     LIVE teesim daemon. Skip the "TEESimulator" name entirely when teesim is the
+#     active engine; for the RS engine (started late, below) it's still stale-cleanup.
+for proc in supervisor daemon aswatcher; do
   for pid in $(pidof "$proc" 2>/dev/null); do
     kill -9 "$pid" 2>/dev/null
   done
 done
-pkill -9 -f TEESimulator 2>/dev/null || true
+if [ "${ATTEST:-}" != teesim ]; then
+  for pid in $(pidof TEESimulator 2>/dev/null); do kill -9 "$pid" 2>/dev/null; done
+  pkill -9 -f TEESimulator 2>/dev/null || true
+fi
 
-# Start the attestation engine here only if it did NOT want the early start
-# (TEESimulator). TrickyStoreOSS is already running from the early start above.
-if ! attest_early 2>/dev/null; then
+# (Re)start the active engine's daemon whenever it isn't alive — keyed on liveness,
+# not on attest_early. A late engine (TEESimulator-RS) starts here for the first
+# time; an early engine (teesim / TSOSS) that the sweep or a crash took down is
+# revived immediately instead of waiting on the ~2 min watchdog.
+if ! attest_alive 2>/dev/null; then
     attest_start
 fi
 
@@ -238,76 +256,69 @@ fi
     done
 }&
 
-# --- First-boot bootstrap (one-shot per module install) ------------------
-# Marker file lives inside MODDIR — gets wiped when the module is
-# uninstalled, so a reinstall re-bootstraps cleanly. On subsequent boots
-# this whole block is a no-op; users press [Action] to refresh manually.
+# --- First-boot auto-action (once per install) ---------------------------
+# One automatic press of [Action] on the FIRST boot after install, so a fresh
+# install lands STRONG without the user ever opening the WebUI. First boot only
+# on purpose — a plain reboot does NOT re-run it; ongoing refresh is the hourly
+# loop's job.
+#
+# It runs the real action.sh, the exact same path a manual press takes: build
+# the target list, fetch the fingerprint with all three sources (native crawl,
+# upstream fetcher, then the shipped local props as a guaranteed fallback),
+# enforce the STRONG spoof flags, sync the security patch, and restart PI. The
+# old inline copy here skipped the target-list build and the local fingerprint
+# fallback, so on a first boot where the network crawl wasn't ready yet it left
+# no usable fingerprint and the device sat at BASIC until a manual press —
+# which is exactly the "first-boot Action doesn't happen" bug. Calling action.sh
+# means there is only one copy of that logic and no weaker duplicate to drift.
+#
+# The .bootstrapped marker lives in MODDIR, which is wiped on uninstall/update,
+# so a reinstall re-bootstraps but a reboot doesn't.
 if [ ! -f "$MODDIR/.bootstrapped" ]; then
 {
-    sleep 20
-    # network usually up well before this, but defer further for slow boots
+    # Right as the device comes up — no long pre-wait. Only a short settle so
+    # GMS has started, then a brief network probe (cap ~12s) and go: action.sh
+    # has a guaranteed local-fingerprint fallback, so it reaches STRONG even
+    # before the network is ready, and the hourly loop later refreshes to a
+    # freshly fetched fingerprint. (Lite's standalone-PIF timing is handled by
+    # the separate every-boot re-sync below, so no extra wait is needed here.)
+    sleep 5
     j=0
     until ping -c1 -W2 1.1.1.1 >/dev/null 2>&1; do
-        j=$((j+1)); [ $j -gt 30 ] && break
+        j=$((j+1)); [ $j -gt 6 ] && break
         sleep 2
     done
-    log -t "AlwaysStrong-boot" "first boot: starting bootstrap"
+    log -t "AlwaysStrong-boot" "first boot: auto-pressing Action"
 
-    # 1. keybox (skipped entirely in custom-keybox mode — user's own keybox).
-    #    Retry with backoff: ping 1.1.1.1 only proves raw IP connectivity, not
-    #    that DNS is up, and on ROMs where the resolver comes late (AOSP builds
-    #    like ArrowOS) the first fetch resolves nothing and a single attempt
-    #    would leave the device with no keybox until the hourly refresh. Stop as
-    #    soon as one lands (rc 0 = updated, 2 = already current).
-    if [ ! -f /data/adb/tricky_store/custom_keybox ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
-        kb_try=0
-        while :; do
-            # to a file, not a pipe: in `cmd | log`, $? is log's exit code, so a
-            # piped keybox_fetch.sh would always look like it succeeded.
-            sh "$MODDIR/keybox_fetch.sh" >/data/adb/tricky_store/.kb_boot.log 2>&1
-            kb_rc=$?
-            cat /data/adb/tricky_store/.kb_boot.log 2>/dev/null | log -t "AlwaysStrong-boot"
-            { [ "$kb_rc" = 0 ] || [ "$kb_rc" = 2 ]; } && break
-            kb_try=$((kb_try+1)); [ $kb_try -ge 6 ] && break
-            sleep $((kb_try * 10))   # 10s, 20s, 30s, 40s, 50s
-        done
-        rm -f /data/adb/tricky_store/.kb_boot.log
+    # Run action.sh under busybox ash: its `set +o standalone` line needs ash,
+    # and toybox sh (some ROMs' default) aborts there. Fall back to plain sh
+    # (this service already runs under the manager's ash) if no busybox is found.
+    BB=""
+    for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox \
+              /data/adb/modules/busybox-ndk/system/*/busybox; do
+        [ -x "$bb" ] && BB="$bb" && break
+    done
+    if [ -n "$BB" ]; then
+        AS_FAST=1 "$BB" sh "$MODDIR/action.sh" >/data/adb/tricky_store/.action_boot.log 2>&1
+    else
+        AS_FAST=1 sh "$MODDIR/action.sh" >/data/adb/tricky_store/.action_boot.log 2>&1
     fi
 
-    # 2. fingerprint + security patch. Our native crawl is primary; upstream's
-    #    fetcher, whose crawl hangs on some devices, is the fallback. Both end
-    #    with the fingerprint in the file this build's zygisk reads.
-    FP_DONE=0
-    if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
-        sh "$MODDIR/pif_native_fetch.sh" >/data/adb/tricky_store/autopif.log 2>&1 && FP_DONE=1
-        cat /data/adb/tricky_store/autopif.log 2>/dev/null | log -t "AlwaysStrong-boot"
-    fi
-    if [ "$FP_DONE" = 0 ]; then
-        engine_autopif 2>&1 | log -t "AlwaysStrong-boot"
-    fi
-
-    # 2b. sync the attestation/system security patch to the fresh fingerprint
-    [ -f "$MODDIR/sync_patch.sh" ] && sh "$MODDIR/sync_patch.sh" 2>&1 | log -t "AlwaysStrong-boot"
-
-    # 3. enforce STRONG-friendly settings on every prop file the engine reads
-    engine_enforce_spoof
-    log -t "AlwaysStrong-boot" "STRONG enforced ($ENGINE)"
-
-    # 4. restart PI consumers so they pick up the new state
-    killall -9 com.google.android.gms.unstable 2>/dev/null
-    killall -9 com.android.vending 2>/dev/null
-
-    # NOTE: deliberately do NOT call status_fetch here. We don't want
-    # the 🟢 status prefix to appear in module.prop's description before
-    # the user has interacted with the module at all — the description
-    # stays as the clean text from module.prop until the user presses
-    # [Action] (or the hourly refresh fires, whichever happens first).
-
-    # mark done regardless of individual step outcome — user can press
-    # [Action] to retry if any step failed (e.g. no internet on first boot)
     touch "$MODDIR/.bootstrapped"
-    log -t "AlwaysStrong-boot" "bootstrap done"
+    log -t "AlwaysStrong-boot" "first boot: Action done"
 }&
+fi
+
+# --- Lite + standalone PIF: re-sync shortly after every boot -------------
+# Separate from the first-boot Action above and NOT one-shot: a standalone
+# PlayIntegrityFork/Fix re-runs its own autopif on every boot and resets the
+# spoof flags to weak defaults (Fork: spoofVendingFinger 1 -> 0), which would
+# drop the Lite verdict after a plain reboot. Once its boot autopif has had time
+# to land, mirror its fingerprint into the attested identity and re-assert the
+# STRONG flags. No-op on the other lines and when no PIF is installed; the hourly
+# loop keeps it in sync from there.
+if grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null; then
+    { sleep 90; sh "$MODDIR/lite_pif_sync.sh" 2>&1 | log -t "AlwaysStrong-boot"; } &
 fi
 
 # --- Hourly refresh (fingerprint + keybox, each toggle-able from WebUI) --
@@ -329,7 +340,7 @@ fi
         esac
         [ "$INT" -lt 60 ] && INT=60
         sleep "$INT"
-        if [ ! -f "$CFG/no_auto_fp" ]; then
+        if [ ! -f "$CFG/no_auto_fp" ] && [ "${ENGINE:-none}" != "none" ]; then
             FP_DONE=0
             if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
                 sh "$MODDIR/pif_native_fetch.sh" >"$CFG/autopif.log" 2>&1 && FP_DONE=1
@@ -343,6 +354,12 @@ fi
             # migrate.sh writes spoofProvider=1 / spoofVendingFinger=0), which
             # would silently drop the verdict an hour after boot.
             engine_enforce_spoof
+        elif [ "${ENGINE:-none}" = "none" ] && [ ! -f "$CFG/no_auto_fp" ]; then
+            # Lite line: no bundled engine to autopif, but if the user runs their
+            # own standalone PlayIntegrityFork, mirror its fingerprint into the
+            # attested identity and re-assert the STRONG spoof flags it keeps
+            # resetting (spoofVendingFinger 1 -> 0). No-op with no PIF present.
+            sh "$MODDIR/lite_pif_sync.sh" 2>&1 | log -t "AlwaysStrong-hourly"
         fi
         if [ ! -f "$CFG/custom_keybox" ] && [ ! -f "$CFG/no_auto_keybox" ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
             kbout=$(sh "$MODDIR/keybox_fetch.sh" 2>&1)
@@ -358,5 +375,9 @@ fi
         if [ -x "$MODDIR/status_fetch.sh" ]; then
             sh "$MODDIR/status_fetch.sh" 2>&1 | log -t "AlwaysStrong-hourly"
         fi
+        # TEESimulator (JingMatrix) only: keep its config.json target list in sync
+        # with target.txt so a newly installed app is attested without a reboot.
+        # No-op / undefined on the other engines.
+        command -v teesim_gen_config >/dev/null 2>&1 && teesim_gen_config
     done
 }&

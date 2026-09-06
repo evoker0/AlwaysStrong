@@ -11,34 +11,45 @@
 #   module-variants/<line>/ship/                 files overlaid into the module
 #
 # Two orthogonal axes:
-#   --variant  fork | inject             the Play Integrity line
-#   --engine   tee | trickystoreoss      the attestation backend (keystore).
-#                                   Default tee. Both read /data/adb/tricky_store/,
-#                                   so the shared scripts/WebUI are engine-neutral.
+#   --variant  fork | inject | nopif          the Play Integrity line
+#   --engine   tee | trickystoreoss | teesim  the attestation backend (keystore).
+#                                   Default tee. tee/trickystoreoss read
+#                                   /data/adb/tricky_store/; teesim uses its own
+#                                   /data/adb/teesim/config.json (bridged for it).
 #
 # Attestation engines:
-#   tee             TEESimulator-RS (software TEE; leaf-hack works for every app)
+#   tee             TEESimulator-RS, Enginex0 (Rust port; leaf-hack works for every app)
 #   trickystoreoss  TrickyStoreOSS, beakthoven (open source; classes.dex + libinject.so)
+#   teesim          TEESimulator, JingMatrix (the original; Kotlin daemon + KeyMint
+#                   interceptor; 64-bit only; -TEESIM suffix)
 #
 # Usage:
-#   ./build.sh                              # both lines, TEESimulator engine
+#   ./build.sh                              # all lines, TEESimulator-RS engine
 #   ./build.sh --variant fork               # only the default (PlayIntegrityFork) line
 #   ./build.sh --variant inject             # only the PlayIntegrityFix inject-s line
-#   ./build.sh --engine trickystoreoss      # both lines, TrickyStoreOSS engine (-TSOSS)
-#   ./build.sh --variant fork --engine trickystoreoss  # fork line + TrickyStoreOSS
+#   ./build.sh --variant nopif              # only the PIF-less Lite line
+#   ./build.sh --engine trickystoreoss      # all lines, TrickyStoreOSS engine (-TSOSS)
+#   ./build.sh --engine teesim              # all lines, TEESimulator/JingMatrix (-TEESIM)
 #   ./build.sh --tee v6.0.0                 # override the TEESimulator-RS release tag
 #   ./build.sh --tee-file PATH              # use a LOCAL TEESimulator-RS zip, skip the download
 #   ./build.sh --tsoss v3.0.0               # override the TrickyStoreOSS release tag
 #   ./build.sh --tsoss-file PATH            # use a LOCAL TrickyStoreOSS zip, skip the download
+#   ./build.sh --teesim canary-63           # override the TEESimulator (JingMatrix) tag
+#   ./build.sh --teesim-file PATH           # use a LOCAL TEESimulator (JingMatrix) zip
 #   ./build.sh --pif v16                    # override the PIF tag  (needs --variant)
 #   ./build.sh --pif-file PATH              # use a LOCAL PIF zip   (needs --variant)
 #   ./build.sh --clean                      # wipe build/ first
 #
-# Output (the -TSOSS suffix marks a TrickyStoreOSS build):
-#   out/AlwaysStrong-<ver>.zip               PlayIntegrityFork          + TEESimulator
-#   out/AlwaysStrong-<ver>-inject.zip        PlayIntegrityFix inject-s  + TEESimulator
+# Output (-TSOSS = TrickyStoreOSS, -TEESIM = TEESimulator/JingMatrix; plain = RS):
+#   out/AlwaysStrong-<ver>.zip               PlayIntegrityFork          + TEESimulator-RS
+#   out/AlwaysStrong-<ver>-inject.zip        PlayIntegrityFix inject-s  + TEESimulator-RS
+#   out/AlwaysStrong-<ver>-nopif.zip         PIF-less / Lite            + TEESimulator-RS
 #   out/AlwaysStrong-<ver>-TSOSS.zip         PlayIntegrityFork          + TrickyStoreOSS
 #   out/AlwaysStrong-<ver>-inject-TSOSS.zip  PlayIntegrityFix inject-s  + TrickyStoreOSS
+#   out/AlwaysStrong-<ver>-nopif-TSOSS.zip   PIF-less / Lite            + TrickyStoreOSS
+#   out/AlwaysStrong-<ver>-TEESIM.zip        PlayIntegrityFork          + TEESimulator (JingMatrix)
+#   out/AlwaysStrong-<ver>-inject-TEESIM.zip PlayIntegrityFix inject-s  + TEESimulator (JingMatrix)
+#   out/AlwaysStrong-<ver>-nopif-TEESIM.zip  PIF-less / Lite            + TEESimulator (JingMatrix)
 #
 # CI / nightly builds live as GitHub Actions artifacts, not release assets, so
 # fetch them yourself (e.g. `gh run download -R osm0sis/PlayIntegrityFork -D ci`)
@@ -58,17 +69,28 @@ TEE_ASSET_DEFAULT="TEESimulator-RS-v6.0.1-307-Release.zip"
 # TrickyStoreOSS (beakthoven) — the open-source TrickyStore keystore engine
 # (plain classes.dex + libinject.so, no obfuscated blobs). Only used when
 # --engine trickystoreoss is passed. Pinned here; --tsoss / --tsoss-file override.
-TSOSS_TAG_DEFAULT="v3.0.0"
-TSOSS_ASSET_DEFAULT="Tricky-Store-OSS-v3.0.0-155-f57cf4f-Release.zip"
+TSOSS_TAG_DEFAULT="v3.1.0"
+TSOSS_ASSET_DEFAULT="Tricky-Store-OSS-v3.1.0-172-41383f5-Release.zip"
+
+# TEESimulator (JingMatrix) — the ORIGINAL TEESimulator: a Kotlin control daemon
+# (app_process) plus a native keymint/keystore interceptor injected into
+# keystore2. It uses its own /data/adb/teesim/config.json layout, so attest/
+# teesim.sh bridges the AlwaysStrong keybox + target list into it. Only used with
+# --engine teesim. Pinned here; --teesim / --teesim-file override. 64-bit only.
+TEESIM_TAG_DEFAULT="canary-63"
+TEESIM_ASSET_DEFAULT="TEESimulator-v4.0-63-123d8ba-Release.zip"
 
 TEE_TAG="$TEE_TAG_DEFAULT"
 TEE_ASSET="$TEE_ASSET_DEFAULT"
 TSOSS_TAG="$TSOSS_TAG_DEFAULT"
 TSOSS_ASSET="$TSOSS_ASSET_DEFAULT"
-ENGINE_KIND="tee"          # tee (default) | trickystoreoss
+TEESIM_TAG="$TEESIM_TAG_DEFAULT"
+TEESIM_ASSET="$TEESIM_ASSET_DEFAULT"
+ENGINE_KIND="tee"          # tee (default) | trickystoreoss | teesim
 DO_CLEAN=0
 TEE_FILE=""
 TSOSS_FILE=""
+TEESIM_FILE=""
 PIF_FILE=""
 PIF_TAG_OVERRIDE=""
 PIF_ASSET_OVERRIDE=""
@@ -81,6 +103,9 @@ while [[ $# -gt 0 ]]; do
         --tsoss)      TSOSS_TAG="$2"; shift 2 ;;
         --tsoss-asset) TSOSS_ASSET="$2"; shift 2 ;;
         --tsoss-file) TSOSS_FILE="$2"; shift 2 ;;
+        --teesim)     TEESIM_TAG="$2"; shift 2 ;;
+        --teesim-asset) TEESIM_ASSET="$2"; shift 2 ;;
+        --teesim-file) TEESIM_FILE="$2"; shift 2 ;;
         --engine)     ENGINE_KIND="$2"; shift 2 ;;
         --pif)        PIF_TAG_OVERRIDE="$2"; shift 2 ;;
         --pif-asset)  PIF_ASSET_OVERRIDE="$2"; shift 2 ;;
@@ -103,11 +128,13 @@ TEE_TAG=$(strip_cr "$TEE_TAG")
 TEE_ASSET=$(strip_cr "$TEE_ASSET")
 TSOSS_TAG=$(strip_cr "$TSOSS_TAG")
 TSOSS_ASSET=$(strip_cr "$TSOSS_ASSET")
+TEESIM_TAG=$(strip_cr "$TEESIM_TAG")
+TEESIM_ASSET=$(strip_cr "$TEESIM_ASSET")
 ENGINE_KIND=$(strip_cr "$ENGINE_KIND")
 
 case "$ENGINE_KIND" in
-    tee|trickystoreoss) ;;
-    *) echo "Unknown --engine '$ENGINE_KIND' (use: tee | trickystoreoss)" >&2; exit 1 ;;
+    tee|trickystoreoss|teesim) ;;
+    *) echo "Unknown --engine '$ENGINE_KIND' (use: tee | trickystoreoss | teesim)" >&2; exit 1 ;;
 esac
 
 # ---------- Paths ----------
@@ -213,6 +240,7 @@ fi
 # across every requested line, so this happens once, before build_variant.
 tee_zip=""
 tsoss_zip=""
+teesim_zip=""
 
 case "$ENGINE_KIND" in
 tee)
@@ -243,6 +271,21 @@ trickystoreoss)
             || die "TrickyStoreOSS download failed"
     else
         green "    cached: $TSOSS_ASSET"
+    fi
+    ;;
+teesim)
+    [[ -f "$ATTEST_SRC/teesim.sh" ]] || die "missing attest/teesim.sh"
+    teesim_zip="$DL/$TEESIM_ASSET"
+    if [[ -n "$TEESIM_FILE" ]]; then
+        [[ -f "$TEESIM_FILE" ]] || die "--teesim-file not found: $TEESIM_FILE"
+        teesim_zip="$TEESIM_FILE"
+        green "    local TEESimulator (JingMatrix) zip: $TEESIM_FILE"
+    elif [[ ! -f "$teesim_zip" ]]; then
+        bold "==> Downloading TEESimulator (JingMatrix) $TEESIM_TAG"
+        $FETCH "$teesim_zip" "https://github.com/JingMatrix/TEESimulator/releases/download/$TEESIM_TAG/$TEESIM_ASSET" \
+            || die "TEESimulator (JingMatrix) download failed"
+    else
+        green "    cached: $TEESIM_ASSET"
     fi
     ;;
 esac
@@ -390,6 +433,10 @@ build_variant() {
   local ZIP_SUFFIX="" PIF_REPO="" PIF_TAG="" PIF_ASSET="" PIF_ASSET_FILTER=""
   local PIF_FILES="" PIF_REQUIRED="" PIF_PATCH_PATHS=""
   local PATCH_AUTOPIF4_WGET=0 PIF_ANTITAMPER=0
+  # PIF_NONE=1 -> a PIF-less "Lite" line: TEESimulator/TSOSS attestation + the
+  # keybox fetcher only, no PlayIntegrityFork/Fix zygisk. For setups where the
+  # bundled PIF conflicts with GMS. build.conf sets PIF_NONE=1 and no PIF pins.
+  local PIF_NONE=0
   # Sourced through a CR-stripped copy: .gitattributes pins build.conf to LF,
   # but an editor or a tarball can still hand us CRLF.
   mkdir -p "$BUILD"
@@ -399,15 +446,23 @@ build_variant() {
   rm -f "$BUILD/.build.conf.$VARIANT"
   [[ -n "$PIF_TAG_OVERRIDE"   ]] && PIF_TAG="$PIF_TAG_OVERRIDE"
   [[ -n "$PIF_ASSET_OVERRIDE" ]] && PIF_ASSET="$PIF_ASSET_OVERRIDE"
-  [[ -n "$PIF_REPO" && -n "$PIF_TAG" && -n "$PIF_ASSET" ]] \
-      || die "$VARIANT: build.conf is missing PIF_REPO / PIF_TAG / PIF_ASSET"
+  if [[ "$PIF_NONE" != "1" ]]; then
+      [[ -n "$PIF_REPO" && -n "$PIF_TAG" && -n "$PIF_ASSET" ]] \
+          || die "$VARIANT: build.conf is missing PIF_REPO / PIF_TAG / PIF_ASSET"
+  fi
 
   bold ""
-  bold "==> Building the '$VARIANT' line ($PIF_REPO $PIF_TAG)"
+  if [[ "$PIF_NONE" == "1" ]]; then
+      bold "==> Building the '$VARIANT' line (PIF-less / Lite)"
+  else
+      bold "==> Building the '$VARIANT' line ($PIF_REPO $PIF_TAG)"
+  fi
 
   # ---------- Download this line's Play Integrity engine ----------
   local pif_zip="$DL/$PIF_ASSET"
-  if [[ -n "$PIF_FILE" ]]; then
+  if [[ "$PIF_NONE" == "1" ]]; then
+      green "    PIF-less line — no Play Integrity engine to download"
+  elif [[ -n "$PIF_FILE" ]]; then
       [[ -f "$PIF_FILE" ]] || die "--pif-file not found: $PIF_FILE"
       pif_zip="$PIF_FILE"
       green "    local PIF zip: $PIF_FILE"
@@ -492,7 +547,7 @@ if [[ "$ENGINE_KIND" == "tee" ]]; then
     cp "$TEE_EXTRACT/classes.dex" "$STAGE/tee_classes.dex"
 
     [[ -f "$TEE_EXTRACT/keybox.xml" ]] && cp "$TEE_EXTRACT/keybox.xml" "$STAGE/keybox.xml"
-else
+elif [[ "$ENGINE_KIND" == "trickystoreoss" ]]; then
     # TrickyStoreOSS (beakthoven): a plain classes.dex (renamed to
     # tsoss_classes.dex so it coexists with PIF's classes.dex), per-abi
     # libTrickyStoreOSS.so + libinject.so (Android abi names, all four arches),
@@ -536,6 +591,48 @@ DAEMON
     fi
 
     [[ -f "$TSOSS_EXTRACT/keybox.xml" ]] && cp "$TSOSS_EXTRACT/keybox.xml" "$STAGE/keybox.xml"
+else
+    # TEESimulator (JingMatrix): the original TEESimulator. Ships its Kotlin
+    # daemon dex + a native keymint/keystore interceptor per 64-bit ABI. We stage
+    # the whole payload under teesim/ (so its classes.dex never collides with
+    # PIF's) and attest/teesim.sh app_process-launches it and bridges the config.
+    TEESIM_EXTRACT="$BUILD/teesim_extracted"
+    rm -rf "$TEESIM_EXTRACT"
+    mkdir -p "$TEESIM_EXTRACT"
+    unzip -qq -o "$teesim_zip" -d "$TEESIM_EXTRACT"
+
+    [[ -f "$TEESIM_EXTRACT/classes.dex" ]] || die "TEESimulator (JingMatrix) ZIP missing classes.dex — upstream layout changed"
+    mkdir -p "$STAGE/teesim"
+    cp "$TEESIM_EXTRACT/classes.dex" "$STAGE/teesim/classes.dex"
+    [[ -f "$TEESIM_EXTRACT/config.default.json" ]] \
+        && cp "$TEESIM_EXTRACT/config.default.json" "$STAGE/teesim/config.default.json"
+
+    # Per-ABI native payload. TEESimulator's keymint lib is ~19 MB PER ABI, so
+    # shipping both arm64-v8a and x86_64 would make an 18 MB zip. teesim is 64-bit
+    # only and virtually every rooted device is arm64, so the release ships
+    # arm64-v8a ONLY (~9 MB). x86_64 (emulators / a few Chromebooks) can self-build
+    # with TEESIM_ABIS="arm64-v8a x86_64".
+    TEESIM_ABIS="${TEESIM_ABIS:-arm64-v8a}"
+    _teesim_abis=0
+    for abi in $TEESIM_ABIS; do
+        if [[ -d "$TEESIM_EXTRACT/$abi" ]]; then
+            mkdir -p "$STAGE/teesim/$abi"
+            cp "$TEESIM_EXTRACT/$abi"/* "$STAGE/teesim/$abi/" 2>/dev/null
+            _teesim_abis=$((_teesim_abis+1))
+        fi
+    done
+    [[ "$_teesim_abis" -gt 0 ]] || die "TEESimulator (JingMatrix) ZIP has none of: $TEESIM_ABIS — upstream layout changed"
+    [[ -f "$STAGE/teesim/arm64-v8a/inject" ]] \
+        || die "TEESimulator (JingMatrix) ZIP missing arm64-v8a/inject — upstream layout changed"
+
+    # Merge its keystore sepolicy rules into ours (same as TrickyStoreOSS).
+    if [[ -f "$TEESIM_EXTRACT/sepolicy.rule" ]]; then
+        while IFS= read -r rule || [[ -n "$rule" ]]; do
+            [[ -z "$rule" ]] && continue
+            grep -qxF "$rule" "$STAGE/sepolicy.rule" 2>/dev/null || echo "$rule" >> "$STAGE/sepolicy.rule"
+        done < "$TEESIM_EXTRACT/sepolicy.rule"
+        green "    merged TEESimulator (JingMatrix) sepolicy rules"
+    fi
 fi
 
 # 2b) Overlay the matching engine adapter as attest.sh. customize.sh sources it
@@ -545,6 +642,10 @@ green "    attestation engine: $ENGINE_KIND"
 
 # 3) Extract this line's Play Integrity engine: zygisk libs, classes.dex (PIF's,
 #    stays as classes.dex) and the upstream helper scripts named by $PIF_FILES.
+#    Skipped entirely for a PIF-less line — it ships no zygisk and no classes.dex.
+if [[ "$PIF_NONE" == "1" ]]; then
+    green "    PIF-less line — skipping zygisk / classes.dex staging"
+else
 PIF_EXTRACT="$BUILD/pif_extracted-$VARIANT"
 rm -rf "$PIF_EXTRACT"
 mkdir -p "$PIF_EXTRACT"
@@ -567,6 +668,7 @@ for f in $PIF_REQUIRED; do
     [[ -f "$STAGE/$f" ]] \
         || die "$VARIANT: PIF zip has no $f — upstream layout changed, update module-variants/$VARIANT/build.conf"
 done
+fi
 
 # 4) Stage the Rust watcher + fetcher binaries (built/cached above).
 mkdir -p "$STAGE/bin"
@@ -753,6 +855,7 @@ done
 # ---------- Generate ZIP ----------
   local VERSION OUT_ZIP ATTEST_SUFFIX=""
   [[ "$ENGINE_KIND" == "trickystoreoss" ]] && ATTEST_SUFFIX="-TSOSS"
+  [[ "$ENGINE_KIND" == "teesim" ]]         && ATTEST_SUFFIX="-TEESIM"
   VERSION=$(grep '^version=' "$STAGE/module.prop" | cut -d= -f2)
   OUT_ZIP="$OUT/AlwaysStrong-${VERSION}${ZIP_SUFFIX}${ATTEST_SUFFIX}.zip"
   rm -f "$OUT_ZIP"
