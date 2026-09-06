@@ -2,30 +2,22 @@
 
 ## v1.0.4
 
-**Bug fixes — custom ROMs (LineageOS, crDroid, …)**
-- **ROM version no longer shows "unknown".** The module was deleting `ro.modversion` / `ro.lineage.*` device-wide, which is what Settings → About phone reads. Play Integrity doesn't rely on those props, so they are now preserved by default and Settings shows the real ROM version again.
-- **Fast-charging toggle restored on LineageOS.** The module deleted `init.svc.vendor.lineage_health`, which made Settings hide the fast-charging / charge-control switch. It is left alone by default now (issue #7).
-- **Security patch follows OTA again.** The spoofed patch date is no longer forced onto the global system props, so Settings shows the real patch level and it updates after an OTA. The attestation and the per-app spoof still stay in lock-step with the fingerprint, so STRONG is unaffected.
-- These three aggressive hides are still available as opt-in toggles in the new **Advanced** tab for anyone who wants maximum stealth.
-
-**New — WebUI**
-- **Advanced tab** with **Import fingerprint** (load your own `pif.json` or `pif.prop` — issue #17) and **Spoof variables**: a live toggle for every PlayIntegrity spoof flag by its real name (`spoofProps`, `spoofBuild`, `spoofProvider`, `spoofVendingFinger`/`spoofVendingBuild`, `spoofSignature`, `spoofVendingSdk`, `DEBUG`). Flip one only if an app needs it (e.g. `spoofProps` off for some wallet apps); the change is written as an override that survives the hourly re-apply, and the STRONG defaults hold otherwise.
-- **Target apps menu** (⋮, top-right): **Add custom package** (type any package id — e.g. a system app that runs an integrity check), **Select all**, and **Unselect unnecessary** (deselects root managers and apps that don't check the bootloader, using Tricky-Addon's exclusion list).
-- **Lite builds drive your own PIF.** On a Lite (`-nopif`) build the Advanced spoof toggles now edit a standalone **PlayIntegrityFork** or **PlayIntegrityFix (inject-s)** that you installed yourself — the module detects which one you have and keeps its fingerprint and STRONG flags in sync. With no such module present it stays attestation + keybox only, as before.
-
-**New — builds**
-- **PIF-less "Lite" build** (`-nopif`) for setups where the bundled PlayIntegrityFork conflicts with Google Play Services — keeps hardware attestation + the automated keybox, drops the fingerprint spoof.
-- **Third keystore engine: TEESimulator (JingMatrix)** (`-TEESIM`), alongside TEESimulator-RS and TrickyStoreOSS. Every release now ships the full 3×3 matrix (Fork / inject / Lite × the three keystores). On the **Fork and inject** lines `-TEESIM` reaches `STRONG` — verified on a device whose real TEE keystore is unavailable, exactly the case the other engines were added for. Two things make it work: the target list handed to TEESimulator is now sanitised (TrickyStore's `pkg!` / `[keybox]` syntax is stripped and GMS/Vending/GSF are pinned by raw `uid:` so DroidGuard's `generateKey` is always claimed instead of falling through to the real HAL), and the profile runs in **generation** mode (the whole key is minted in software under the keybox, so it no longer needs a working hardware KeyMint level). On the **Lite** line, where nothing spoofs `android.os.Build`, TEESimulator must attest the device's *real* identity to match — pointing it at a Pixel fingerprint there mismatches the real Build and lands at `BASIC`, so Lite + `-TEESIM` is for devices whose real keybox-backed attestation already passes.
-- Upstream releases now **auto-publish**: when PlayIntegrityFork / PlayIntegrityFix / TEESimulator(-RS) move, CI bumps the version, writes English notes, and cuts a release on its own.
-
-**Upstream**
-- Updated PlayIntegrityFork to v18.
-- Updated TrickyStoreOSS to v3.1.0.
-- Added TEESimulator (JingMatrix) canary-63 as a keystore option.
+**New**
+- **Lite build** (`-nopif`): hardware attestation + auto keybox, no bundled fingerprint spoof — for setups where the bundled PlayIntegrityFork conflicts with Google Play Services. Drives your own PlayIntegrityFork / Fix if you have one.
+- **WebUI Advanced tab**: import your own fingerprint (`pif.json` / `pif.prop`), toggle any spoof flag by name, add custom target packages, select all / unselect unnecessary.
+- **Zero-touch first boot**: the first boot after install runs the Action by itself, so a fresh install lands `STRONG` without opening the module.
+- Upstream releases now auto-publish (PlayIntegrityFork / PlayIntegrityFix / TEESimulator-RS bumps become a release on their own).
 
 **Fixes**
-- Uninstalling a Lite build no longer removes a standalone PlayIntegrityFork / PlayIntegrityFix you installed yourself (both share the `playintegrityfix` module id).
-- Importing your own fingerprint now also updates the TEESimulator (JingMatrix) profile, so `-TEESIM` builds don't briefly drop to `BASIC` after an import.
+- **Action no longer gets stuck on a black screen.** Every network step is bounded and falls back to the next downloader; limits are progress-based, so slow networks are never cut off. The native fetcher prefers IPv4 and retries over the other address family when a connection stalls.
+- Custom ROMs: ROM version no longer shows "unknown", the LineageOS fast-charging toggle is back, and the security patch follows OTAs again (the aggressive hides are opt-in in the Advanced tab).
+- Uninstalling a Lite build no longer removes your own PlayIntegrityFork / Fix.
+
+**Upstream**
+- PlayIntegrityFork v18, TEESimulator-RS v6.0.1-307.
+
+**Builds**
+- Releases ship three zips: `AlwaysStrong-<ver>.zip` (default), `-inject.zip`, `-nopif.zip` (Lite). The TrickyStoreOSS / TEESimulator (JingMatrix) engines are nightly-only — see `docs/ADVANCED.md`.
 
 ## v1.0.3
 

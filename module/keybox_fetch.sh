@@ -54,14 +54,35 @@ for bb in /data/adb/ksu/bin/busybox /data/adb/magisk/busybox /data/adb/ap/bin/bu
     [ -n "$bb" ] && [ -x "$bb" ] && BB="$bb" && break
 done
 
+# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
+# TLS stall) used to freeze the whole Action: status_fetch and the first-tap
+# keybox fetch called it with no bound at all, so the screen sat after the last
+# row with no "done" until the user gave up. Every network step now goes through
+# this; the caller falls through to the next engine when the cap trips.
+# toybox timeout (Android 10+) and busybox timeout both take -k; -k SIGKILLs a
+# command that ignores the SIGTERM, which a `sh` waiting on a child would defer.
+TO=""
+if timeout -k 1 5 true >/dev/null 2>&1; then TO="timeout -k 3"
+elif timeout 5 true >/dev/null 2>&1; then TO="timeout"
+elif [ -n "$BB" ] && "$BB" timeout -k 1 5 true >/dev/null 2>&1; then TO="$BB timeout -k 3"
+elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
+fi
+bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
+
+# Caps are set for "definitely dead", never for "slow": each downloader's own
+# -T is an IDLE timeout (asfetch, busybox wget, wget) or is paired with a speed
+# floor (curl), so a slow link that keeps delivering bytes is never cut off; the
+# outer cap only backstops a process that is stuck entirely.
 # run_engine NAME OUTFILE URL — one download attempt with the named engine.
+# Each engine's own -T bounds one idle wait; the outer cap bounds the call.
 run_engine() {
     rm -f "$2"
     case "$1" in
-        asfetch) [ -n "$ABI" ] && [ -f "$ASFETCH" ] && { [ -x "$ASFETCH" ] || chmod 0755 "$ASFETCH" 2>/dev/null; } && "$ASFETCH" -T 10 -o "$2" "$3" 2>/dev/null ;;
-        bb)      [ -n "$BB" ] && "$BB" wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
-        curl)    command -v curl >/dev/null 2>&1 && curl -fsSL --connect-timeout 10 --max-time 30 -o "$2" "$3" 2>/dev/null ;;
-        wget)    command -v wget >/dev/null 2>&1 && wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
+        asfetch) [ -n "$ABI" ] && [ -f "$ASFETCH" ] && { [ -x "$ASFETCH" ] || chmod 0755 "$ASFETCH" 2>/dev/null; } && bounded 90 "$ASFETCH" -T 15 -o "$2" "$3" 2>/dev/null ;;
+        bb)      [ -n "$BB" ] && bounded 90 "$BB" wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
+        curl)    command -v curl >/dev/null 2>&1 && bounded 90 curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time 20 --max-time 85 -o "$2" "$3" 2>/dev/null ;;
+        wget)    command -v wget >/dev/null 2>&1 && bounded 90 wget -q -T 20 -O "$2" "$3" 2>/dev/null ;;
     esac
     [ -s "$2" ]
 }

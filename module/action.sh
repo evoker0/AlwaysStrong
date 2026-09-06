@@ -52,6 +52,26 @@ done
 SED_I="sed -i"
 [ -n "$BB" ] && SED_I="$BB sed -i"
 
+# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
+# TLS stall) used to freeze the whole Action: status_fetch and the first-tap
+# keybox fetch called it with no bound at all, so the screen sat after the last
+# row with no "done" until the user gave up. Every network step now goes through
+# this; the caller falls through to the next engine when the cap trips.
+# toybox timeout (Android 10+) and busybox timeout both take -k; -k SIGKILLs a
+# command that ignores the SIGTERM, which a `sh` waiting on a child would defer.
+TO=""
+if timeout -k 1 5 true >/dev/null 2>&1; then TO="timeout -k 3"
+elif timeout 5 true >/dev/null 2>&1; then TO="timeout"
+elif [ -n "$BB" ] && "$BB" timeout -k 1 5 true >/dev/null 2>&1; then TO="$BB timeout -k 3"
+elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
+fi
+bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
+# Caps are set for "definitely dead", never for "slow": each downloader's own
+# -T is an IDLE timeout (asfetch, busybox wget, wget) or is paired with a speed
+# floor (curl), so a slow link that keeps delivering bytes is never cut off; the
+# outer cap only backstops a process that is stuck entirely.
+
 # --- Play Integrity engine adapter ---
 # Which prop file the zygisk reads, and what its spoof flags are called, is all
 # that differs between the two builds. engine.sh owns it; everything below is
@@ -65,17 +85,17 @@ fi
 # asfetch first (connects IPv4-first, works on IPv6-only-DNS networks); fall
 # through to busybox wget / curl if it ever fails on a host.
 dl_out() {
-    if [ -n "$ASFETCH" ]; then $ASFETCH -T 20 "$1" 2>/dev/null && return 0; fi
-    if [ -n "$BB" ]; then $BB wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
-    if command -v curl >/dev/null 2>&1; then curl -fsSL --max-time 20 "$1" 2>/dev/null && return 0; fi
-    if command -v wget >/dev/null 2>&1; then wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
+    if [ -n "$ASFETCH" ]; then bounded 120 $ASFETCH -T 20 "$1" 2>/dev/null && return 0; fi
+    if [ -n "$BB" ]; then bounded 120 $BB wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
+    if command -v curl >/dev/null 2>&1; then bounded 120 curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time 20 --max-time 110 "$1" 2>/dev/null && return 0; fi
+    if command -v wget >/dev/null 2>&1; then bounded 120 wget -q -T 20 -O - "$1" 2>/dev/null && return 0; fi
     return 1
 }
 dl_to() {
-    if [ -n "$ASFETCH" ]; then rm -f "$1"; $ASFETCH -T 60 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if [ -n "$BB" ]; then rm -f "$1"; $BB wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if command -v curl >/dev/null 2>&1; then rm -f "$1"; curl -fsSL --max-time 60 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
-    if command -v wget >/dev/null 2>&1; then rm -f "$1"; wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
+    if [ -n "$ASFETCH" ]; then rm -f "$1"; bounded 600 $ASFETCH -T 60 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
+    if [ -n "$BB" ]; then rm -f "$1"; bounded 600 $BB wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
+    if command -v curl >/dev/null 2>&1; then rm -f "$1"; bounded 600 curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time 60 --max-time 590 -o "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
+    if command -v wget >/dev/null 2>&1; then rm -f "$1"; bounded 600 wget -q -T 60 -O "$1" "$2" 2>/dev/null; [ -s "$1" ] && return 0; fi
     return 1
 }
 
@@ -89,8 +109,10 @@ row "⏳" "initializing..."
 sleep 3
 
 # --- Step 1: Target list ---
+# `pm list packages` can stall while PackageManager is busy — cap it (an old
+# phone with hundreds of apps legitimately takes ~30 s here).
 [ -x "$MODPATH/build_target_txt.sh" ] && \
-    sh "$MODPATH/build_target_txt.sh" "$CONFIG_DIR/target.txt" >/dev/null 2>&1
+    bounded 180 sh "$MODPATH/build_target_txt.sh" "$CONFIG_DIR/target.txt" >/dev/null 2>&1
 TGT_N=$(grep -cvE '^[[:space:]]*$' "$CONFIG_DIR/target.txt" 2>/dev/null)
 row "🎯" "${TGT_N:-0} apps > target"
 sleep 1
@@ -107,10 +129,13 @@ if [ -f "$CONFIG_DIR/custom_keybox" ]; then
     fi
 elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
     if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
-        sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1 &
+        bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1 &
         row "🔑" "keybox ok"
     else
-        sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
+        # First tap on a fresh install: synchronous, so it MUST be bounded — an
+        # unbounded fetch here left the Action stuck on a blank screen.
+        row "🔑" "fetching keybox..."
+        bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
         if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
             row "🔑" "keybox updated"
         else
@@ -132,7 +157,7 @@ if [ "$ENGINE" = "none" ]; then
 # plain PIF-less message.
 # On Lite the standalone PIF owns the fingerprint (AlwaysStrong only mirrors it into
 # the attested identity), so point the user at that module's own WebUI to change it.
-_synced=$(sh "$MODPATH/lite_pif_sync.sh" 2>/dev/null)
+_synced=$(bounded 180 sh "$MODPATH/lite_pif_sync.sh" 2>/dev/null)
 case "$_synced" in
     "OK fork")   row "🔗" "synced with PlayIntegrityFork"
                  row "⚙️" "set fingerprint in Fork's WebUI" ;;
@@ -161,13 +186,10 @@ apply_pif() { engine_install_pif "$1"; }
 #    tight bound just forces the fallback on every tap. Gate on the EXIT CODE:
 #    it is 0 only when the engine accepted a fresh fingerprint — a stale file
 #    must not count as success.
+row "🌐" "fetching fingerprint..."
 if [ -x "$MODPATH/pif_native_fetch.sh" ]; then
-    if command -v timeout >/dev/null 2>&1; then
-        timeout "$ENGINE_NATIVE_TIMEOUT" sh "$MODPATH/pif_native_fetch.sh" \
-            >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
-    else
-        sh "$MODPATH/pif_native_fetch.sh" >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
-    fi
+    bounded "$ENGINE_NATIVE_TIMEOUT" sh "$MODPATH/pif_native_fetch.sh" \
+        >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
     [ "$FP_OK" = 1 ] && FP_SRC="native"
 fi
 
@@ -181,14 +203,10 @@ if [ "$FP_OK" = 0 ]; then
     #    functions read $MODPATH / $CONFIG_DIR / $SED_I, which are plain shell
     #    variables here. They have to go through the environment; without the
     #    prefix the subshell sees them empty and the fallback never runs.
-    if command -v timeout >/dev/null 2>&1; then
-        MODPATH="$MODPATH" CONFIG_DIR="$CONFIG_DIR" SED_I="$SED_I" \
-            timeout "$ENGINE_AUTOPIF_TIMEOUT" \
-            sh -c '. "$MODPATH/engine.sh"; engine_autopif' \
-            >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
-    else
-        engine_autopif >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
-    fi
+    MODPATH="$MODPATH" CONFIG_DIR="$CONFIG_DIR" SED_I="$SED_I" \
+        bounded "$ENGINE_AUTOPIF_TIMEOUT" \
+        sh -c '. "$MODPATH/engine.sh"; engine_autopif' \
+        >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
     [ "$FP_OK" = 1 ] && FP_SRC="pif"
 
     # 3. shipped static props (alternate 2 each tap) — installed through the
@@ -244,10 +262,12 @@ fi
 # --- Restart PI + status ---
 killall -9 com.google.android.gms.unstable 2>/dev/null
 killall -9 com.android.vending 2>/dev/null
-am force-stop com.android.vending >/dev/null 2>&1
+bounded 45 am force-stop com.android.vending >/dev/null 2>&1
 
+# Status indicator — network again, and it runs right before "done": this is
+# the call that froze the Action for good whenever asfetch hung.
 if [ -x "$MODPATH/status_fetch.sh" ]; then
-    MODPATH="$MODPATH" sh "$MODPATH/status_fetch.sh" manual >/dev/null 2>&1
+    MODPATH="$MODPATH" bounded 150 sh "$MODPATH/status_fetch.sh" manual >/dev/null 2>&1
 fi
 
 # --- WebUI: Magisk only (background, silent) ---

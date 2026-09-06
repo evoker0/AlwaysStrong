@@ -16,7 +16,8 @@ PROP="$MODPATH/module.prop"
 BASE_FILE="$MODPATH/description.txt"
 CONFIG_DIR=/data/adb/tricky_store
 NO_AUTO_FLAG="$CONFIG_DIR/no_auto_indicator"
-TIMEOUT=8
+TIMEOUT=10   # idle timeout per downloader; the outer cap per engine is CAP
+CAP=45
 
 # mode: "manual" (action button — always writes module.prop)
 #       "auto"   (service.sh hourly — skips write if NO_AUTO_FLAG present)
@@ -69,24 +70,40 @@ case "$(uname -m)" in
 esac
 ASFETCH="$SELF_DIR/bin/$SF_ABI/asfetch"
 
+# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
+# TLS stall) used to freeze the whole Action: status_fetch and the first-tap
+# keybox fetch called it with no bound at all, so the screen sat after the last
+# row with no "done" until the user gave up. Every network step now goes through
+# this; the caller falls through to the next engine when the cap trips.
+# toybox timeout (Android 10+) and busybox timeout both take -k; -k SIGKILLs a
+# command that ignores the SIGTERM, which a `sh` waiting on a child would defer.
+TO=""
+if timeout -k 1 5 true >/dev/null 2>&1; then TO="timeout -k 3"
+elif timeout 5 true >/dev/null 2>&1; then TO="timeout"
+elif [ -n "$BB" ] && "$BB" timeout -k 1 5 true >/dev/null 2>&1; then TO="$BB timeout -k 3"
+elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
+fi
+bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
+
 # No single downloader is reliable across devices (asfetch fails to connect on
 # some, busybox wget stalls on the mirror CDN on others) — try each in turn and
 # take the first non-empty body.
 get_status() {
     if [ -n "$SF_ABI" ] && [ -x "$ASFETCH" ]; then
-        _b=$("$ASFETCH" -T "$TIMEOUT" "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        _b=$(bounded "$CAP" "$ASFETCH" -T "$TIMEOUT" "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
         [ -n "$_b" ] && { echo "$_b"; return 0; }
     fi
     if [ -n "$BB" ]; then
-        _b=$("$BB" wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        _b=$(bounded "$CAP" "$BB" wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
         [ -n "$_b" ] && { echo "$_b"; return 0; }
     fi
     if command -v curl >/dev/null 2>&1; then
-        _b=$(curl -fsSL --max-time "$TIMEOUT" "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        _b=$(bounded "$CAP" curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time 40 "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
         [ -n "$_b" ] && { echo "$_b"; return 0; }
     fi
     if command -v wget >/dev/null 2>&1; then
-        _b=$(wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
+        _b=$(bounded "$CAP" wget -q -T "$TIMEOUT" -O - "$URL" 2>/dev/null | tr -d '\r\n' | head -c 64)
         [ -n "$_b" ] && { echo "$_b"; return 0; }
     fi
     return 1
@@ -94,6 +111,9 @@ get_status() {
 
 new=$(get_status)
 [ -z "$new" ] && exit 3
+# A captive portal / hotel Wi-Fi answers every URL with an HTML login page. That
+# is not a status — never stamp it into module.prop.
+case "$new" in *'<'*|*'>'*|*'{'*) exit 3 ;; esac
 
 base=$(head -1 "$BASE_FILE" | tr -d '\r\n')
 [ -z "$base" ] && exit 4

@@ -9,14 +9,14 @@ name: Upstream auto-release
 #     2. the module version is bumped one patch (v1.0.4 -> v1.0.5),
 #     3. an end-user changelog is written from what actually changed, plus the
 #        exact bundled versions,
-#     4. the whole 9-zip matrix is rebuilt, and
+#     4. the three release zips (fork / inject / nopif on TEESimulator-RS) are
+#        rebuilt, and
 #     5. a GitHub release is published with those notes.
 #
-#   Silent pins — TrickyStoreOSS and TEESimulator (JingMatrix). When ONLY these
-#   move they are still pinned to their newest version and committed, but no
-#   version bump and no release: they ride along in the next triggered release.
-#   (So "TEESimulator updated" alone doesn't cut a release; but when e.g. PIF
-#   inject updates, TEESimulator is refreshed and shipped in that same release.)
+#   Silent pins — TrickyStoreOSS and TEESimulator (JingMatrix). These are the
+#   nightly-only keystore engines: never in a release, built by `build.sh
+#   --engine …` and the nightly workflow. When they move their pins are still
+#   refreshed and committed, but that never bumps the version or cuts a release.
 #
 # update-upstream.sh carries the decision in its exit code (11 = release,
 # 12 = silent pins, 0 = up to date). A lookup that fails is a warning, not a red
@@ -68,15 +68,15 @@ jobs:
         if: steps.check.outputs.state == 'release'
         run: ./scripts/bump-release.sh
 
-      - name: Build the whole 9-zip matrix with the new pins
+      - name: Build the release zips with the new pins
         if: steps.check.outputs.state == 'release'
         run: |
           # committed native binaries: touch them newer than the sources so the
           # build ships them instead of needing Rust + the NDK on the runner.
           find native -path '*/prebuilt/*' -type f -exec touch {} +
-          bash build.sh                              # fork / inject / nopif  + TEESimulator-RS
-          bash build.sh --engine trickystoreoss      # fork / inject / nopif  + TrickyStoreOSS
-          bash build.sh --engine teesim              # fork / inject / nopif  + TEESimulator (JingMatrix)
+          # fork / inject / nopif on TEESimulator-RS. The -TSOSS / -TEESIM engines
+          # are optional and never part of a release.
+          bash build.sh
 
       - name: Commit the bump to main
         if: steps.check.outputs.state == 'release'
@@ -139,7 +139,8 @@ jobs:
 
       # --------------------- silent pin path ---------------------
       # Only TrickyStoreOSS / TEESimulator(JingMatrix) moved: commit the refreshed
-      # pins so they ship in the next triggered release. No version bump, no release.
+      # pins so the optional engines build against the newest upstream. No version
+      # bump, no release.
       - name: Commit the non-triggering pin bumps (no release)
         if: steps.check.outputs.state == 'pins'
         run: |
@@ -148,6 +149,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add build.sh module-variants
           git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
-          git commit -m "chore: refresh non-triggering upstream pins (TrickyStoreOSS / TEESimulator) — ships in next release"
+          git commit -m "chore: refresh optional-engine pins (TrickyStoreOSS / TEESimulator)"
           git pull --rebase origin main || true
           git push origin HEAD:main

@@ -25,7 +25,8 @@
 
 CONFIG_DIR=/data/adb/tricky_store
 TARGET="$CONFIG_DIR/pif.prop"
-TIMEOUT=10
+TIMEOUT=15   # idle timeout per fetch; the outer per-fetch cap is TIMEOUT + CAP_EXTRA
+CAP_EXTRA=60
 
 log() { echo "pif_native_fetch: $*"; }
 
@@ -62,6 +63,26 @@ if [ -z "$BB" ] && [ -z "$ABI" -o ! -x "$ASFETCH" ] \
     log "no fetcher available (asfetch/curl/wget)."; exit 1
 fi
 
+# bounded SECS cmd... — run cmd under a hard wall-clock cap. A fetcher that
+# never returns (asfetch / wget / curl stuck on a dead route, a hung DNS, a
+# TLS stall) used to freeze the whole Action: status_fetch and the first-tap
+# keybox fetch called it with no bound at all, so the screen sat after the last
+# row with no "done" until the user gave up. Every network step now goes through
+# this; the caller falls through to the next engine when the cap trips.
+# toybox timeout (Android 10+) and busybox timeout both take -k; -k SIGKILLs a
+# command that ignores the SIGTERM, which a `sh` waiting on a child would defer.
+TO=""
+if timeout -k 1 5 true >/dev/null 2>&1; then TO="timeout -k 3"
+elif timeout 5 true >/dev/null 2>&1; then TO="timeout"
+elif [ -n "$BB" ] && "$BB" timeout -k 1 5 true >/dev/null 2>&1; then TO="$BB timeout -k 3"
+elif [ -n "$BB" ] && "$BB" timeout 5 true >/dev/null 2>&1; then TO="$BB timeout"
+fi
+bounded() { _bs="$1"; shift; if [ -n "$TO" ]; then $TO "$_bs" "$@"; else "$@"; fi; }
+# Caps are set for "definitely dead", never for "slow": each downloader's own
+# -T is an IDLE timeout (asfetch, busybox wget, wget) or is paired with a speed
+# floor (curl), so a slow link that keeps delivering bytes is never cut off; the
+# outer cap only backstops a process that is stuck entirely.
+
 # ---- Fast path: asfetch's in-process fetcher --------------------------------
 # `asfetch autopif` does the whole crawl inside its bounded rustls client (real
 # JSON parsing, no busybox grep/tac, no shell subshells), writing pif.prop itself
@@ -85,7 +106,17 @@ if [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
     trap 'rm -rf "$NW"; exit 143' TERM
     trap 'rm -rf "$NW"; exit 130' INT
     [ -f "$TARGET" ] && cp -f "$TARGET" "$NW/pif.prop" 2>/dev/null
-    if "$ASFETCH" autopif --out "$NW/pif.prop" --module "$NW" 2>&1 \
+    # asfetch has its own no-progress watchdog (exit 124) well inside this cap.
+    bounded 150 "$ASFETCH" autopif --out "$NW/pif.prop" --module "$NW" 2>&1
+    _rc=$?
+    # 124 = the cap tripped: asfetch is not answering on this device/network.
+    # Don't hand the shell crawl the same stuck binary — it would burn its cap
+    # on every page; go straight to busybox wget / curl for the fallback.
+    if [ "$_rc" = 124 ] || [ "$_rc" = 137 ]; then
+        log "native autopif timed out — skipping asfetch for the shell crawl"
+        ASFETCH=""
+    fi
+    if [ "$_rc" = 0 ] \
        && grep -q '^FINGERPRINT=google/.*:CANARY/' "$NW/pif.prop" 2>/dev/null; then
         grep -vE '^(spoof|DEBUG)' "$NW/pif.prop" > "$NW/identity.prop" 2>/dev/null
         engine_spoof_block >> "$NW/identity.prop"
@@ -109,26 +140,26 @@ fetch() {
     _o="$1"; _u="$2"; _ref="$3"
     if [ -n "$ABI" ] && [ -x "$ASFETCH" ]; then
         rm -f "$_o"
-        if [ -n "$_ref" ]; then "$ASFETCH" -T "$TIMEOUT" -H "Referer: $_ref" -o "$_o" "$_u" 2>/dev/null
-        else "$ASFETCH" -T "$TIMEOUT" -o "$_o" "$_u" 2>/dev/null; fi
+        if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -H "Referer: $_ref" -o "$_o" "$_u" 2>/dev/null
+        else bounded $((TIMEOUT + CAP_EXTRA)) "$ASFETCH" -T "$TIMEOUT" -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if [ -n "$BB" ]; then
         rm -f "$_o"
-        if [ -n "$_ref" ]; then "$BB" wget -q -T "$TIMEOUT" --header "Referer: $_ref" --no-check-certificate -O "$_o" "$_u" 2>/dev/null
-        else "$BB" wget -q -T "$TIMEOUT" --no-check-certificate -O "$_o" "$_u" 2>/dev/null; fi
+        if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --header "Referer: $_ref" --no-check-certificate -O "$_o" "$_u" 2>/dev/null
+        else bounded $((TIMEOUT + CAP_EXTRA)) "$BB" wget -q -T "$TIMEOUT" --no-check-certificate -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v curl >/dev/null 2>&1; then
         rm -f "$_o"
-        if [ -n "$_ref" ]; then curl -fsSL --max-time "$TIMEOUT" -e "$_ref" -o "$_o" "$_u" 2>/dev/null
-        else curl -fsSL --max-time "$TIMEOUT" -o "$_o" "$_u" 2>/dev/null; fi
+        if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -e "$_ref" -o "$_o" "$_u" 2>/dev/null
+        else bounded $((TIMEOUT + CAP_EXTRA)) curl -fsSL --connect-timeout 15 --speed-limit 1 --speed-time "$TIMEOUT" --max-time $((TIMEOUT + CAP_EXTRA - 5)) -o "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     if command -v wget >/dev/null 2>&1; then
         rm -f "$_o"
-        if [ -n "$_ref" ]; then wget -q -T "$TIMEOUT" --header "Referer: $_ref" -O "$_o" "$_u" 2>/dev/null
-        else wget -q -T "$TIMEOUT" -O "$_o" "$_u" 2>/dev/null; fi
+        if [ -n "$_ref" ]; then bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" --header "Referer: $_ref" -O "$_o" "$_u" 2>/dev/null
+        else bounded $((TIMEOUT + CAP_EXTRA)) wget -q -T "$TIMEOUT" -O "$_o" "$_u" 2>/dev/null; fi
         [ -s "$_o" ] && return 0
     fi
     return 1

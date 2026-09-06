@@ -109,7 +109,9 @@ engine_enforce_spoof() {
     done
 }
 
-# Seconds before the native crawl / upstream fetcher are killed. The crawl runs
-# ~20-25s on a cold network, so 25 grazes it and forces the fallback every tap.
-ENGINE_NATIVE_TIMEOUT=60
-ENGINE_AUTOPIF_TIMEOUT=60
+# Seconds before the native crawl / upstream fetcher are killed. Generous on
+# purpose: both fetchers time out on their own when nothing arrives (idle
+# timeouts / a no-progress watchdog), so these only backstop a stuck process —
+# a slow 2G link that is still delivering bytes must not be cut off here.
+ENGINE_NATIVE_TIMEOUT=240
+ENGINE_AUTOPIF_TIMEOUT=180

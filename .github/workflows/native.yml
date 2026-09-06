@@ -1,0 +1,64 @@
+name: Native binaries
+
+# Rebuilds the committed asfetch prebuilts (native/asfetch/prebuilt/<abi>/asfetch)
+# from native/asfetch/src on a GitHub runner, so a source change ships without a
+# Rust + NDK toolchain on anyone's machine. Runs on demand from the Actions tab;
+# tick "commit" to push the new binaries to main, otherwise they are only
+# uploaded as an artifact for testing.
+#
+# The release / nightly workflows never compile — they package whatever is
+# committed here — so run this (with commit) after editing the fetcher source.
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: 'Commit the rebuilt prebuilts to main'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  asfetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain + Android targets
+        run: |
+          rustup update stable
+          rustup target add aarch64-linux-android armv7-linux-androideabi
+          cargo install cargo-ndk --locked
+
+      - name: Android NDK
+        id: ndk
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r27c
+          add-to-path: false
+
+      - name: Build asfetch (arm64-v8a + armeabi-v7a)
+        env:
+          ANDROID_NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: bash scripts/build-asfetch.sh
+
+      - name: Upload prebuilts
+        uses: actions/upload-artifact@v4
+        with:
+          name: asfetch-prebuilt
+          path: native/asfetch/prebuilt/**/asfetch
+          if-no-files-found: error
+
+      - name: Commit to main
+        if: inputs.commit
+        run: |
+          set -eu
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add native/asfetch/prebuilt
+          git diff --cached --quiet && { echo "prebuilts unchanged"; exit 0; }
+          git commit -m "native: rebuild asfetch prebuilts from source"
+          git pull --rebase origin main || true
+          git push origin HEAD:main

@@ -36,17 +36,15 @@ done
 [[ -n "$notes" ]] || notes="- Maintenance and upstream refresh."
 
 # Always list the exact upstream versions this release bundles, so a reader sees
-# what's inside every build without digging — including the ones (TrickyStoreOSS,
-# TEESimulator) that don't trigger a release on their own but ride along here.
+# what's inside every build without digging. The optional engines (TrickyStoreOSS,
+# TEESimulator/JingMatrix) are not released, so they are not listed here.
 pin() { sed -n "s/^$2=\"\{0,1\}//p" "$ROOT/$1" 2>/dev/null | head -1 | sed 's/"$//'; }
 fork_pif=$(pin module-variants/fork/build.conf   PIF_TAG)
 inj_pif=$( pin module-variants/inject/build.conf PIF_TAG)
 tee_v=$(   pin build.sh TEE_TAG_DEFAULT)
-tsoss_v=$( pin build.sh TSOSS_TAG_DEFAULT)
-teesim_v=$(pin build.sh TEESIM_TAG_DEFAULT)
 notes+=$'\n\n'"**Bundled in every build of this release**"
 notes+=$'\n'"- Play Integrity: PlayIntegrityFork \`${fork_pif}\` (Fork builds) · PlayIntegrityFix inject-s \`${inj_pif}\` (inject builds)"
-notes+=$'\n'"- Keystore: TEESimulator-RS \`${tee_v}\` (default) · TrickyStoreOSS \`${tsoss_v}\` (\`-TSOSS\`) · TEESimulator \`${teesim_v}\` (\`-TEESIM\`)"
+notes+=$'\n'"- Keystore: TEESimulator-RS \`${tee_v}\`"
 notes+=$'\n'"- Not sure which file to grab? See **Which build to download** in the README."
 
 # Bump module.prop
