@@ -1,7 +1,8 @@
 name: Nightly
 
-# Nightly test builds, uploaded as GitHub Actions ARTIFACTS — never a release.
-# These are bleeding-edge snapshots off main between releases. Releases only
+# Test builds, uploaded as GitHub Actions ARTIFACTS — never a release.
+# Runs on every push to main and nightly, so the artifacts are always the
+# bleeding-edge snapshot of main between releases. Releases only
 # ship the three TEESimulator-RS zips; this is also where the OPTIONAL keystore
 # engines (TrickyStoreOSS -TSOSS, TEESimulator/JingMatrix -TEESIM) are built for
 # anyone who wants to try them without building locally.
@@ -15,9 +16,20 @@ name: Nightly
 #   gh run download -R evoker0/AlwaysStrong --name AlwaysStrong-TSOSS
 
 on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/upstream-update.yml'
   schedule:
     - cron: '0 2 * * *'   # daily, 02:00 UTC
-  workflow_dispatch:
+  workflow_dispatch:      # NOTE: nightly.link only follows push/schedule runs, not manual ones
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
