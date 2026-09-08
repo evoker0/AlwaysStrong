@@ -10,6 +10,7 @@ name: Nightly
 # latest build of any line has a permanent direct link via nightly.link:
 #   https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main            (all nine)
 #   https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-TSOSS.zip
+# The artifact IS the flashable module zip (contents are uploaded unpacked).
 # or from the run's "Artifacts" section (Actions tab), or:
 #   gh run download -R evoker0/AlwaysStrong --name AlwaysStrong-TSOSS
 
@@ -46,10 +47,13 @@ jobs:
       - name: List what was built
         run: ls -la out/
 
-      - name: Sort the zips into one folder per variant
-        # GitHub artifacts are always wrapped in a zip, so one artifact per
-        # variant means "download one zip, get one flashable zip inside".
-        # The artifact names carry no version so nightly.link URLs stay stable.
+      # upload-artifact re-zips whatever it is given, so handing it the built
+      # module zip would yield a zip-of-a-zip that has to be unpacked before
+      # flashing. Unpack each variant and upload its CONTENTS instead, so the
+      # downloaded artifact is itself the flashable module zip. Artifact names
+      # carry no version so the nightly.link URLs stay permanent; the version
+      # is in module.prop inside.
+      - name: Unpack each variant into its own artifact folder
         run: |
           set -euo pipefail
           for z in out/AlwaysStrong-*.zip; do
@@ -57,16 +61,17 @@ jobs:
             rest=${base#AlwaysStrong-}          # v1.0.4-inject-TSOSS
             variant=${rest#*-}                  # inject-TSOSS
             [[ "$variant" == "$rest" ]] && variant=fork   # no suffix = Fork line
-            mkdir -p "out/split/$variant"
-            mv "$z" "out/split/$variant/"
+            mkdir -p "artifacts/$variant"
+            unzip -q "$z" -d "artifacts/$variant"
           done
-          find out/split -type f | sort
+          ls -la artifacts/*/
 
       - name: Upload AlwaysStrong-fork
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-fork
-          path: out/split/fork/*.zip
+          path: artifacts/fork
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -74,7 +79,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-inject
-          path: out/split/inject/*.zip
+          path: artifacts/inject
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -82,7 +88,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-nopif
-          path: out/split/nopif/*.zip
+          path: artifacts/nopif
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -90,7 +97,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-TSOSS
-          path: out/split/TSOSS/*.zip
+          path: artifacts/TSOSS
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -98,7 +106,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-inject-TSOSS
-          path: out/split/inject-TSOSS/*.zip
+          path: artifacts/inject-TSOSS
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -106,7 +115,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-nopif-TSOSS
-          path: out/split/nopif-TSOSS/*.zip
+          path: artifacts/nopif-TSOSS
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -114,7 +124,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-TEESIM
-          path: out/split/TEESIM/*.zip
+          path: artifacts/TEESIM
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -122,7 +133,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-inject-TEESIM
-          path: out/split/inject-TEESIM/*.zip
+          path: artifacts/inject-TEESIM
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
 
@@ -130,6 +142,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AlwaysStrong-nopif-TEESIM
-          path: out/split/nopif-TEESIM/*.zip
+          path: artifacts/nopif-TEESIM
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
