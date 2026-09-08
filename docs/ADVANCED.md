@@ -19,7 +19,7 @@ attached to releases** — they live in the nightly builds:
 
   | Line | Latest nightly |
   |---|---|
-  | Fork + TEESimulator-RS | [AlwaysStrong-fork.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-fork.zip) |
+  | Default (PlayIntegrityFork + TEESimulator-RS) | [AlwaysStrong.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong.zip) |
   | inject + TEESimulator-RS | [AlwaysStrong-inject.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-inject.zip) |
   | Lite + TEESimulator-RS | [AlwaysStrong-nopif.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-nopif.zip) |
   | Fork + TrickyStoreOSS | [AlwaysStrong-TSOSS.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-TSOSS.zip) |

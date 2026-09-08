@@ -60,17 +60,17 @@ jobs:
             base=$(basename "$z" .zip)          # AlwaysStrong-v1.0.4-inject-TSOSS
             rest=${base#AlwaysStrong-}          # v1.0.4-inject-TSOSS
             variant=${rest#*-}                  # inject-TSOSS
-            [[ "$variant" == "$rest" ]] && variant=fork   # no suffix = Fork line
+            [[ "$variant" == "$rest" ]] && variant=default   # no suffix = the default zip
             mkdir -p "artifacts/$variant"
             unzip -q "$z" -d "artifacts/$variant"
           done
           ls -la artifacts/*/
 
-      - name: Upload AlwaysStrong-fork
+      - name: Upload AlwaysStrong (default)
         uses: actions/upload-artifact@v4
         with:
-          name: AlwaysStrong-fork
-          path: artifacts/fork
+          name: AlwaysStrong
+          path: artifacts/default
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 30
