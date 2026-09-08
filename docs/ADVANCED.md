@@ -29,8 +29,7 @@ attached to releases** — they live in the nightly builds:
   | inject + TEESimulator (JingMatrix) | [AlwaysStrong-inject-TEESIM.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-inject-TEESIM.zip) |
   | Lite + TEESimulator (JingMatrix) | [AlwaysStrong-nopif-TEESIM.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-nopif-TEESIM.zip) |
 
-  What you download is the module zip itself — flash it as-is, no unpacking
-  (the version is in its `module.prop`). The same artifacts are on the
+ The same artifacts are on the
   [Actions tab](https://github.com/evoker0/AlwaysStrong/actions/workflows/nightly.yml)
   under the latest run (GitHub login required there). Nightlies are untested
   snapshots of `main` and are kept for 30 days.
