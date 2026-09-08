@@ -6,8 +6,12 @@ name: Nightly
 # engines (TrickyStoreOSS -TSOSS, TEESimulator/JingMatrix -TEESIM) are built for
 # anyone who wants to try them without building locally.
 #
-# Grab a build from the run's "Artifacts" section (Actions tab), or:
-#   gh run download -R <owner>/<repo> --name AlwaysStrong-nightly
+# Every variant is its own artifact with a STABLE (version-less) name, so the
+# latest build of any line has a permanent direct link via nightly.link:
+#   https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main            (all nine)
+#   https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-TSOSS.zip
+# or from the run's "Artifacts" section (Actions tab), or:
+#   gh run download -R evoker0/AlwaysStrong --name AlwaysStrong-TSOSS
 
 on:
   schedule:
@@ -42,10 +46,90 @@ jobs:
       - name: List what was built
         run: ls -la out/
 
-      - name: Upload nightly artifacts
+      - name: Sort the zips into one folder per variant
+        # GitHub artifacts are always wrapped in a zip, so one artifact per
+        # variant means "download one zip, get one flashable zip inside".
+        # The artifact names carry no version so nightly.link URLs stay stable.
+        run: |
+          set -euo pipefail
+          for z in out/AlwaysStrong-*.zip; do
+            base=$(basename "$z" .zip)          # AlwaysStrong-v1.0.4-inject-TSOSS
+            rest=${base#AlwaysStrong-}          # v1.0.4-inject-TSOSS
+            variant=${rest#*-}                  # inject-TSOSS
+            [[ "$variant" == "$rest" ]] && variant=fork   # no suffix = Fork line
+            mkdir -p "out/split/$variant"
+            mv "$z" "out/split/$variant/"
+          done
+          find out/split -type f | sort
+
+      - name: Upload AlwaysStrong-fork
         uses: actions/upload-artifact@v4
         with:
-          name: AlwaysStrong-nightly
-          path: out/AlwaysStrong-*.zip
+          name: AlwaysStrong-fork
+          path: out/split/fork/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-inject
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-inject
+          path: out/split/inject/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-nopif
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-nopif
+          path: out/split/nopif/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-TSOSS
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-TSOSS
+          path: out/split/TSOSS/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-inject-TSOSS
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-inject-TSOSS
+          path: out/split/inject-TSOSS/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-nopif-TSOSS
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-nopif-TSOSS
+          path: out/split/nopif-TSOSS/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-TEESIM
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-TEESIM
+          path: out/split/TEESIM/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-inject-TEESIM
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-inject-TEESIM
+          path: out/split/inject-TEESIM/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload AlwaysStrong-nopif-TEESIM
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysStrong-nopif-TEESIM
+          path: out/split/nopif-TEESIM/*.zip
           if-no-files-found: error
           retention-days: 30

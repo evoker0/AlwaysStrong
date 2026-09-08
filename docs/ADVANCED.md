@@ -12,9 +12,29 @@ alternative keystore engines are wired into the same module and can be built for
 any of the three Play Integrity lines (Fork / inject / Lite). They are **never
 attached to releases** — they live in the nightly builds:
 
-- **Nightly artifacts** — every nightly run builds all nine zips. Open the
-  [Actions tab](https://github.com/evoker0/AlwaysStrong/actions/workflows/nightly.yml),
-  pick the latest run and download `AlwaysStrong-nightly`.
+- **Nightly builds (direct download)** — every nightly run builds all nine zips,
+  each as its own artifact. The **latest** build of any line is always at a
+  permanent [nightly.link](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main)
+  URL, no GitHub login needed:
+
+  | Line | Latest nightly |
+  |---|---|
+  | Fork + TEESimulator-RS | [AlwaysStrong-fork.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-fork.zip) |
+  | inject + TEESimulator-RS | [AlwaysStrong-inject.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-inject.zip) |
+  | Lite + TEESimulator-RS | [AlwaysStrong-nopif.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-nopif.zip) |
+  | Fork + TrickyStoreOSS | [AlwaysStrong-TSOSS.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-TSOSS.zip) |
+  | inject + TrickyStoreOSS | [AlwaysStrong-inject-TSOSS.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-inject-TSOSS.zip) |
+  | Lite + TrickyStoreOSS | [AlwaysStrong-nopif-TSOSS.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-nopif-TSOSS.zip) |
+  | Fork + TEESimulator (JingMatrix) | [AlwaysStrong-TEESIM.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-TEESIM.zip) |
+  | inject + TEESimulator (JingMatrix) | [AlwaysStrong-inject-TEESIM.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-inject-TEESIM.zip) |
+  | Lite + TEESimulator (JingMatrix) | [AlwaysStrong-nopif-TEESIM.zip](https://nightly.link/evoker0/AlwaysStrong/workflows/nightly/main/AlwaysStrong-nopif-TEESIM.zip) |
+
+  GitHub wraps every artifact in a zip, so what you download is a small zip
+  with the flashable `AlwaysStrong-<ver>-….zip` inside it — extract once, then
+  flash the inner zip. The same artifacts are on the
+  [Actions tab](https://github.com/evoker0/AlwaysStrong/actions/workflows/nightly.yml)
+  under the latest run (GitHub login required there). Nightlies are untested
+  snapshots of `main` and are kept for 30 days.
 - **Build locally** — `./build.sh --engine trickystoreoss` or `./build.sh --engine teesim`
   (see *Building* below).
 

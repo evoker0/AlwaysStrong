@@ -71,7 +71,7 @@ Every release ships three zips. They differ only in how the Pixel fingerprint is
 <details>
 <summary><b>Optional keystore engines: TrickyStoreOSS (<code>-TSOSS</code>) and TEESimulator by JingMatrix (<code>-TEESIM</code>)</b></summary>
 
-The keystore half can also run on the open-source [TrickyStoreOSS](https://github.com/beakthoven/TrickyStoreOSS) or on the original [TEESimulator by JingMatrix](https://github.com/JingMatrix/TEESimulator), for any of the three lines above (`-TSOSS`, `-inject-TSOSS`, `-nopif-TSOSS`, `-TEESIM`, `-inject-TEESIM`, `-nopif-TEESIM`). These are **nightly-only, never in a release**: grab them from the nightly build artifacts on the Actions tab, or build them yourself with `./build.sh --engine trickystoreoss` / `--engine teesim`. They don't auto-update, and `-TEESIM` is 64-bit only.
+The keystore half can also run on the open-source [TrickyStoreOSS](https://github.com/beakthoven/TrickyStoreOSS) or on the original [TEESimulator by JingMatrix](https://github.com/JingMatrix/TEESimulator), for any of the three lines above (`-TSOSS`, `-inject-TSOSS`, `-nopif-TSOSS`, `-TEESIM`, `-inject-TEESIM`, `-nopif-TEESIM`). These are **nightly-only, never in a release**: download the latest nightly of each one straight from the [nightly.link table in ADVANCED.md](docs/ADVANCED.md#optional-keystore-engines--tsoss--teesim) (one artifact per variant), or build them yourself with `./build.sh --engine trickystoreoss` / `--engine teesim`. They don't auto-update, and `-TEESIM` is 64-bit only.
 
 Details, caveats (in particular Lite + `-TEESIM`) and how to build them: **[docs/ADVANCED.md](docs/ADVANCED.md)**.
 
