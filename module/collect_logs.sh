@@ -246,6 +246,18 @@ if [ -s "$KB" ]; then
     echo "looks-like-keybox: $(head -c 4096 "$KB" | grep -q Keybox && echo yes || echo NO)"
     echo "certs: $(grep -o '<Certificate' "$KB" | wc -l | tr -d " ")  privkeys: $(grep -o '<PrivateKey' "$KB" | wc -l | tr -d " ")  algos: $(grep -oE 'algorithm="[a-z]+"' "$KB" | sort -u | tr '\n' ' ') keyboxes: $(grep -oE '<NumberOfKeyboxes>[0-9]+' "$KB" | tr -dc '0-9')"
     echo "custom-keybox mode: $([ -f "$CFG/custom_keybox" ] && echo on || echo off)"
+    # customize.sh seeds the upstream demo keybox on a fresh install and records
+    # its sha256 in .keybox_seed; a match means the real one never arrived.
+    if [ -f "$CFG/.keybox_seed" ]; then
+        _seed=$(cat "$CFG/.keybox_seed" 2>/dev/null)
+        if [ "$_seed" = "unknown" ] || [ "$(sha < "$KB" | awk '{print tolower($1)}')" = "$_seed" ]; then
+            echo "INSTALL-TIME PLACEHOLDER KEYBOX (public demo, revoked) — the fetch never succeeded; STRONG is impossible with it"
+        else
+            echo "placeholder marker stale (keybox was replaced): $_seed"
+        fi
+    else
+        echo "placeholder: no (fetched or user-supplied)"
+    fi
     echo "per-app keyboxes (names only): $(ls "$CFG"/*.xml 2>/dev/null | grep -v '/keybox.xml$' | sed 's|.*/||' | tr '\n' ' ' | grep . || echo none)"
 else
     echo "no keybox.xml present"

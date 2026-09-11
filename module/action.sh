@@ -128,16 +128,35 @@ if [ -f "$CONFIG_DIR/custom_keybox" ]; then
         row "⚠️" "custom keybox not set"
     fi
 elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
-    if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
+    # A fresh install ships the upstream demo keybox as a placeholder (public,
+    # revoked — never STRONG) and customize.sh marks it in .keybox_seed with its
+    # sha256. While the file on disk still matches that marker there is no real
+    # keybox, however valid the XML looks, so it must not be reported as "ok".
+    keybox_looks_valid() { [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; }
+    keybox_is_seed() {
+        [ -f "$CONFIG_DIR/.keybox_seed" ] || return 1
+        _seed=$(cat "$CONFIG_DIR/.keybox_seed" 2>/dev/null)
+        [ "$_seed" = "unknown" ] && return 0
+        _sha=""
+        if command -v sha256sum >/dev/null 2>&1; then _sha=$(sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null)
+        elif [ -n "$BB" ]; then _sha=$("$BB" sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null); fi
+        [ -n "$_sha" ] || return 0            # cannot hash: trust the marker
+        [ "$(echo "$_sha" | awk '{print tolower($1)}')" = "$_seed" ]
+    }
+    if keybox_looks_valid && ! keybox_is_seed; then
         bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1 &
         row "🔑" "keybox ok"
     else
-        # First tap on a fresh install: synchronous, so it MUST be bounded — an
-        # unbounded fetch here left the Action stuck on a blank screen.
+        # First tap on a fresh install (no keybox, or only the placeholder):
+        # synchronous, so it MUST be bounded — an unbounded fetch here left the
+        # Action stuck on a blank screen.
         row "🔑" "fetching keybox..."
         bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
-        if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
+        if keybox_looks_valid && ! keybox_is_seed; then
             row "🔑" "keybox updated"
+        elif keybox_looks_valid; then
+            row "⚠️" "placeholder keybox — fetch failed"
+            row "🌐" "no internet? retried hourly"
         else
             row "⚠️" "keybox missing"
         fi
