@@ -92,7 +92,7 @@ for f in module.prop service.sh post-fs-data.sh action.sh \
          keybox_fetch.sh build_target_txt.sh status_fetch.sh description.txt \
          rom_spoof_block.sh conflict_scan.sh sync_patch.sh \
          pif_native_fetch.sh prop_unify.sh logcat_cleanup.sh collect_logs.sh \
-         import_pif.sh reapply_spoof.sh lite_pif_sync.sh \
+         import_pif.sh reapply_spoof.sh lite_pif_sync.sh reset_defaults.sh \
          pif_fallback_1.prop pif_fallback_2.prop \
          target.txt daemon \
          $ENGINE_FILES ; do

@@ -86,7 +86,7 @@ Details, caveats (in particular Lite + `-TEESIM`) and how to build them: **[docs
 - **Auto target.** A native watcher follows package changes via inotify: install a new app and it's added to the attestation target instantly.
 - **Xposed-aware.** LSPosed / Xposed managers are kept out of the target list, since attesting through a hooked process breaks `STRONG`.
 - **Conflict resolution.** Known conflicting modules (TrickyStore, other PIF / TEE forks, SafetyNet Fix, MagiskHidePropsConf, …) are disabled at install and on every boot.
-- **WebUI Advanced tab.** Import your own fingerprint (`pif.json` / `pif.prop`), flip any Play Integrity spoof flag by its real name, add custom target packages, or switch to your own keybox.
+- **WebUI Advanced tab.** Import your own fingerprint (`pif.json` / `pif.prop`), flip any Play Integrity spoof flag by its real name, add custom target packages, or switch to your own keybox. **Reset to defaults** at the bottom undoes every toggle and re-runs Action, keeping your keybox.
 
 <details>
 <summary><b>More: GMS kill, security-patch sync, one clean module</b></summary>
