@@ -106,9 +106,10 @@ sec "TEE / daemon processes"
 # own process name, so it never shows up as "daemon" itself. Report the engine's
 # real process name (from attest.sh) instead of a misleading "daemon: not running".
 ATTEST=""; [ -f "$MODDIR/attest.sh" ] && . "$MODDIR/attest.sh" 2>/dev/null
+# JingMatrix's App renames itself to "TEESimulator" too (overriding --nice-name),
+# so both TEE engines show up under the same process name.
 case "$ATTEST" in
     trickystoreoss) ENGINE_PROC=TrickyStoreOSS ;;
-    teesim)         ENGINE_PROC=teesim ;;
     *)              ENGINE_PROC=TEESimulator ;;
 esac
 echo "attestation engine: ${ATTEST_NAME:-TEESimulator-RS} (process: $ENGINE_PROC)"
