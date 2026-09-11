@@ -14,7 +14,7 @@
 #   - sh /data/adb/modules/tricky_store/collect_logs.sh   (root shell)
 #   - sh action.sh logs
 #
-# Every network / IPC step is wall-clock bounded: the WebUI waits ~30 s for the
+# Every network / IPC step is wall-clock bounded: the WebUI waits ~90 s for the
 # output path, so a dead network must not turn the button into a hang.
 #
 # Prints the output path on the last line so callers can show it.
