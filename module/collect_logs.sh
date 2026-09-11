@@ -53,22 +53,71 @@ grep -E '^(name|version|versionCode)=' "$MODDIR/module.prop" 2>/dev/null
 
 sec "Device / ROM"
 for p in ro.product.brand ro.product.model ro.product.device \
-         ro.build.version.release ro.build.version.sdk ro.build.fingerprint \
-         ro.build.version.security_patch ro.product.cpu.abi; do
+         ro.build.version.release ro.build.version.sdk ro.product.first_api_level \
+         ro.build.fingerprint ro.build.type ro.build.tags \
+         ro.build.version.security_patch ro.product.cpu.abi ro.product.cpu.abilist; do
+    echo "$p=$(getprop $p)"
+done
+
+# The BASIC verdict is DroidGuard's environment check, not attestation. These
+# are the props it (and every root detector) looks at first; a permissive
+# SELinux, a debuggable build or an orange boot state fails BASIC no matter how
+# good the keybox is. Values are read as the shell sees them, so a prop the
+# module resets only inside GMS (spoofProps) still shows the raw ROM value here.
+sec "Integrity blockers (BASIC fails on any of these)"
+SE=$(getenforce 2>/dev/null)
+[ -z "$SE" ] && { case "$(cat /sys/fs/selinux/enforce 2>/dev/null)" in 1) SE=Enforcing ;; 0) SE=Permissive ;; *) SE=unknown ;; esac; }
+case "$SE" in
+    Enforcing) echo "selinux: Enforcing" ;;
+    Permissive) echo "selinux: PERMISSIVE  <-- Play Integrity can NOT pass while SELinux is permissive; fix the ROM/kernel first" ;;
+    *) echo "selinux: $SE (could not read)" ;;
+esac
+for p in ro.boot.verifiedbootstate ro.boot.flash.locked ro.boot.vbmeta.device_state \
+         ro.boot.veritymode ro.debuggable ro.secure ro.adb.secure; do
     echo "$p=$(getprop $p)"
 done
 
 sec "Root manager / Zygisk"
 echo "KSU: $([ -d /data/adb/ksu ] && echo yes || echo no)"
 echo "APatch: $([ -d /data/adb/ap ] && echo yes || echo no)"
-echo "Magisk: $([ -d /data/adb/magisk ] && echo yes || echo no)"
+if [ -d /data/adb/magisk ]; then
+    echo "Magisk: yes ($(magisk -v 2>/dev/null || echo 'version n/a'), code $(magisk -V 2>/dev/null || echo n/a))"
+    # Built-in Zygisk must be OFF when Zygisk Next / ReZygisk provides it.
+    echo "magisk builtin zygisk: $(magisk --sqlite "select value from settings where key='zygisk'" 2>/dev/null | sed 's/.*value=//' | grep . || echo unknown)"
+    # PlayIntegrityFork wants GMS *out* of the denylist (it handles the unstable
+    # process itself); the enforce toggle and the two Google entries are what
+    # matter, so list only those.
+    if magisk --denylist status >/dev/null 2>&1; then echo "denylist enforced: yes"; else echo "denylist enforced: no"; fi
+    echo "denylist google entries: $(magisk --denylist ls 2>/dev/null | grep -E 'com.google.android.gms|com.android.vending' | tr '\n' ' ' | grep . || echo none)"
+else
+    echo "Magisk: no"
+fi
 echo "ZygiskNext: $([ -d /data/adb/modules/zygisksu ] && echo yes || echo no)"
 echo "ReZygisk: $([ -d /data/adb/modules/rezygisk ] && echo yes || echo no)"
 
+sec "Google apps"
+for pkg in com.google.android.gms com.android.vending; do
+    v=$(dumpsys package "$pkg" 2>/dev/null | grep -m1 versionName | sed 's/^[[:space:]]*versionName=//')
+    echo "$pkg: ${v:-not found}"
+done
+
 sec "TEE / daemon processes"
-for proc in TEESimulator supervisor daemon aswatcher; do
+# The daemon file is only a launcher: it execs into app_process under the engine's
+# own process name, so it never shows up as "daemon" itself. Report the engine's
+# real process name (from attest.sh) instead of a misleading "daemon: not running".
+ATTEST=""; [ -f "$MODDIR/attest.sh" ] && . "$MODDIR/attest.sh" 2>/dev/null
+case "$ATTEST" in
+    trickystoreoss) ENGINE_PROC=TrickyStoreOSS ;;
+    teesim)         ENGINE_PROC=teesim ;;
+    *)              ENGINE_PROC=TEESimulator ;;
+esac
+echo "attestation engine: ${ATTEST_NAME:-TEESimulator-RS} (process: $ENGINE_PROC)"
+for proc in "$ENGINE_PROC" supervisor aswatcher; do
     echo "$proc: $(pidof "$proc" 2>/dev/null || echo 'not running')"
 done
+if command -v attest_alive >/dev/null 2>&1; then
+    attest_alive && echo "engine alive (attest_alive): yes" || echo "engine alive (attest_alive): NO"
+fi
 
 sec "Spoofed fingerprint (pif.prop — safe to share)"
 for f in "$CFG/pif.prop" "$MODDIR/pif.prop" "$MODDIR/custom.pif.prop"; do
@@ -150,7 +199,9 @@ done
 sec "logcat (our tags, last 200 lines)"
 # -t 3000 reads only the tail of the ring buffer; a full `logcat -d` dump can be
 # tens of MB and takes seconds, which is most of the button's perceived lag.
-logcat -d -t 3000 2>/dev/null | grep -iE 'AlwaysStrong|TEESimulator|tricky_store|aswatcher|libinject|PlayIntegrity' | tail -200 || echo "logcat unavailable"
+# PIF/Native + PIF/Java are PlayIntegrityFork's tags, plain "PIF" is inject-s;
+# their presence is the only proof the spoof actually landed inside GMS.
+logcat -d -t 3000 2>/dev/null | grep -iE 'AlwaysStrong|TEESimulator|tricky_store|aswatcher|libinject|PlayIntegrity|[^A-Za-z]PIF[/: ]' | tail -200 || echo "logcat unavailable"
 
 sec "dmesg (our tags)"
 dmesg 2>/dev/null | grep -iE 'TEESimulator|tricky_store|aswatcher' | tail -40 || echo "dmesg unavailable"

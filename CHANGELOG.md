@@ -1,5 +1,10 @@
 # AlwaysStrong changelog
 
+## Unreleased
+
+**Fixes**
+- **Collect logs** now records what the BASIC verdict actually depends on: SELinux mode (flagged loudly when permissive — Play Integrity cannot pass in that state), verified-boot / bootloader-lock props, build type and tags, `ro.debuggable`, CPU ABI list, first API level, Magisk version, built-in Zygisk and denylist state, Google Play Services and Play Store versions, and PlayIntegrityFork / Fix logcat lines (proof the spoof reached GMS). The misleading `daemon: not running` line is replaced by the engine's real process name.
+
 ## v1.0.4
 
 **New**
