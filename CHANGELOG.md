@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+**New**
+- **Advanced → Reset to defaults**: one button (with a confirm) puts every WebUI setting back to the fresh-install state — all toggles, spoof variables, the check interval, custom packages — and re-runs Action, so the fetched fingerprint replaces an imported one. Your keybox and per-app keybox assignments are kept. Also `sh reset_defaults.sh` from a root shell.
+
 **Fixes**
-- **Collect logs** now records what the BASIC verdict actually depends on: SELinux mode (flagged loudly when permissive — Play Integrity cannot pass in that state), verified-boot / bootloader-lock props, build type and tags, `ro.debuggable`, CPU ABI list, first API level, Magisk version, built-in Zygisk and denylist state, Google Play Services and Play Store versions, and PlayIntegrityFork / Fix logcat lines (proof the spoof reached GMS). The misleading `daemon: not running` line is replaced by the engine's real process name.
+- **TEESimulator (JingMatrix) build**: a refreshed keybox and target-list changes now reach the engine immediately. Its daemon only watches `/data/adb/teesim`, where our keybox is a symlink into `/data/adb/tricky_store`, so it never saw the hourly / Action keybox refresh and a fresh install could sit without a keybox until the first hourly tick. The keybox fetcher and the target builder now tell the engine to reload (no-op on TEESimulator-RS / TrickyStoreOSS, which watch the directory themselves).
+- **Collect logs** now records what the verdict actually depends on: SELinux mode (flagged loudly when permissive — Play Integrity cannot pass in that state), the real verified-boot / bootloader state from the kernel command line (the props are pinned by the module, so they always looked green), build type and tags, `ro.debuggable`, CPU ABI list, first API level, clock sanity, Magisk / KSU / APatch versions, built-in Zygisk, denylist and Zygisk-provider state, every installed module with its state, Google Play Services and Play Store versions, PlayIntegrityFork / Fix logcat lines (proof the spoof reached GMS), whether the engine library is actually mapped inside `keystore2`, SELinux denials around keystore, the fingerprint file the zygisk really reads (hashed against the display copy), security-patch coherence across all sources, keybox shape (cert / key counts, still no contents), the WebUI flag files, the on-disk module logs, and the JingMatrix TEESimulator symlink / config (identity fields redacted). Every network and IPC probe is time-bounded so the button can no longer hang. The misleading `daemon: not running` line is replaced by the engine's real process name.
 
 ## v1.0.4
 
