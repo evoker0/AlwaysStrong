@@ -809,8 +809,8 @@ h1{
 
 <script>
 const I={
-  en:{auto:"Configuration",fp_t:"Fingerprint",fp_s:"Automatic Pixel Canary refresh",kb_t:"Keybox",kb_s:"Auto check, writes only if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate",ckbx:"Custom keybox",ck_t:"Custom keybox",ck_s:"Use your own keybox — auto-fetch off",ck_pick:"Select keybox file",ck_none:"No file selected",ck_have:"keybox.xml",ck_bad:"Not a valid keybox",ck_sel:"Selected keybox:",fm_new:"Newest",fm_old:"Oldest",fm_empty:"Empty folder",fm_cancel:"Cancel",pak:"Target apps",pak_t:"Target apps",pak_s:"Choose apps, mode & keybox",pak_search:"Search apps",pak_default:"Default keybox",pak_import:"Import keybox file…",pak_mode:"Mode",pak_auto:"Auto",pak_auto_s:"Let AlwaysStrong decide",pak_gen:"Generate",pak_gen_s:"Generate the full cert chain (!)",pak_hack:"Hack",pak_hack_s:"Hack the leaf cert (?)",pak_keybox:"Keybox",pak_apply:"Apply",pak_ok:"OK",logs:"Collect logs",logs_run:"Collecting…",logs_done:"Saved:",logs_fail:"Failed — run via root shell",logs_slow:"Still running — check /sdcard",tab_main:"Configuration",tab_adv:"Advanced",adv:"Advanced",spoofvars:"Spoof variables",pak_menu:"Menu",pak_selall:"Select all",pak_unnec:"Deselect unnecessary",pak_add_dlg:"Add custom package",pak_add_ph2:"package.name",pak_selall_done:"All apps selected",pak_unnec_done:"Deselected unnecessary apps",adv_note:"These are for edge cases. Leave them default unless an app needs it — the defaults are what pass STRONG.",theme:"Theme",th_sys:"System",th_light:"Light",th_dark:"Dark",spf_t:"Spoof system props",spf_s:"Turn off if a wallet/bank app fails",imp_t:"Import fingerprint",imp_s:"Load a pif.json or pif.prop file",hrm_t:"Hide ROM identity",hrm_s:"Also hides ROM version & fast-charge toggle",spp_t:"Spoof security patch",spp_s:"Keep the system patch date equal to the attested one — off shows the real date after a reboot",applied:"Applied — restarting Play Integrity",imp_run:"Importing…",imp_ok:"Fingerprint imported",imp_bad:"Import failed",imp_none:"Not a pif.json / pif.prop file",pak_add:"Add custom package",pak_add_ph:"com.example.app",pak_add_bad:"Enter a valid package name",rst:"Reset",rst_t:"Reset to defaults",rst_s:"Undo every toggle here and re-run Action",rst_dlg:"Reset to defaults?",rst_body:"All toggles, spoof variables, the check interval and custom packages go back to the fresh-install defaults, and the fetched fingerprint replaces an imported one. Your keybox and per-app keybox assignments are kept. Action then runs again.",rst_ok:"Reset",rst_done:"Defaults restored — Action running",rst_fail:"Reset failed — run reset_defaults.sh via root shell"},
-  tr:{auto:"Yapılandırma",fp_t:"Fingerprint",fp_s:"Otomatik Pixel Canary yenileme",kb_t:"Keybox",kb_s:"Otomatik kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış",ckbx:"Özel keybox",ck_t:"Özel keybox",ck_s:"Kendi keyboxını kullan — oto çekme kapalı",ck_pick:"Keybox dosyası seç",ck_none:"Dosya seçilmedi",ck_have:"keybox.xml",ck_bad:"Geçerli keybox değil",ck_sel:"Seçili keybox:",fm_new:"En yeni",fm_old:"En eski",fm_empty:"Boş klasör",fm_cancel:"İptal",pak:"Hedef uygulamalar",pak_t:"Hedef uygulamalar",pak_s:"Uygulama, mod & keybox seç",pak_search:"Uygulama ara",pak_default:"Varsayılan keybox",pak_import:"Keybox dosyası içe aktar…",pak_mode:"Mod",pak_auto:"Oto",pak_auto_s:"AlwaysStrong karar versin",pak_gen:"Üret (Generate)",pak_gen_s:"Tüm sertifika zincirini üret (!)",pak_hack:"Hack",pak_hack_s:"Leaf sertifikayı değiştir (?)",pak_keybox:"Keybox",pak_apply:"Uygula",pak_ok:"Tamam",logs:"Log topla",logs_run:"Toplanıyor…",logs_done:"Kaydedildi:",logs_fail:"Başarısız — root shell'den çalıştır",logs_slow:"Hâlâ çalışıyor — /sdcard klasörüne bak",tab_main:"Yapılandırma",tab_adv:"Gelişmiş",adv:"Gelişmiş",spoofvars:"Spoof değişkenleri",pak_menu:"Menü",pak_selall:"Tümünü seç",pak_unnec:"Gereksizleri kaldır",pak_add_dlg:"Özel paket ekle",pak_add_ph2:"paket.adi",pak_selall_done:"Tüm uygulamalar seçildi",pak_unnec_done:"Gereksiz uygulamalar kaldırıldı",adv_note:"Bunlar istisnai durumlar içindir. Bir uygulama gerektirmedikçe varsayılan bırakın — STRONG'u geçiren varsayılanlardır.",theme:"Tema",th_sys:"Sistem",th_light:"Açık",th_dark:"Koyu",spf_t:"Sistem proplarını spoofla",spf_s:"Cüzdan/banka uygulaman çalışmıyorsa kapat",imp_t:"Fingerprint içe aktar",imp_s:"pif.json veya pif.prop dosyası yükle",hrm_t:"ROM kimliğini gizle",hrm_s:"ROM sürümünü ve hızlı şarj anahtarını da gizler",spp_t:"Güvenlik yamasını spoofla",spp_s:"Sistem yama tarihini attestation ile aynı tutar — kapatınca yeniden başlatmada gerçek tarih döner",applied:"Uygulandı — Play Integrity yeniden başlatılıyor",imp_run:"İçe aktarılıyor…",imp_ok:"Fingerprint içe aktarıldı",imp_bad:"İçe aktarma başarısız",imp_none:"pif.json / pif.prop dosyası değil",pak_add:"Özel paket ekle",pak_add_ph:"com.example.app",pak_add_bad:"Geçerli bir paket adı gir",rst:"Sıfırla",rst_t:"Varsayılanlara dön",rst_s:"Buradaki tüm ayarları geri al ve Action'ı yeniden çalıştır",rst_dlg:"Varsayılanlara dönülsün mü?",rst_body:"Tüm anahtarlar, spoof değişkenleri, kontrol aralığı ve özel paketler ilk kurulum değerlerine döner; indirilen fingerprint içe aktarılanın yerini alır. Keybox'ın ve uygulama başına keybox atamaların korunur. Ardından Action yeniden çalışır.",rst_ok:"Sıfırla",rst_done:"Varsayılanlar geri yüklendi — Action çalışıyor",rst_fail:"Sıfırlama başarısız — reset_defaults.sh'ı root kabuğundan çalıştır"},
+  en:{auto:"Configuration",fp_t:"Fingerprint",fp_s:"Automatic Pixel Canary refresh",kb_t:"Keybox",kb_s:"Auto check, writes only if newer",status:"Keybox status",ind_t:"Status indicator",ind_s:"Show status prefix in description",rs_t:"Block ROM spoof",rs_s:"Disable PixelProps / pihooks engines",int_t:"Check every",donate:"Donate",ckbx:"Custom keybox",ck_t:"Custom keybox",ck_s:"Use your own keybox — auto-fetch off",ck_pick:"Select keybox file",ck_none:"No file selected",ck_have:"keybox.xml",ck_bad:"Not a valid keybox",ck_sel:"Selected keybox:",fm_new:"Newest",fm_old:"Oldest",fm_empty:"Empty folder",fm_cancel:"Cancel",pak:"Target apps",pak_t:"Target apps",pak_s:"Choose apps, mode & keybox",pak_search:"Search apps",pak_default:"Default keybox",pak_import:"Import keybox file…",pak_mode:"Mode",pak_auto:"Auto",pak_auto_s:"Let AlwaysStrong decide",pak_gen:"Generate",pak_gen_s:"Generate the full cert chain (!)",pak_hack:"Hack",pak_hack_s:"Hack the leaf cert (?)",pak_keybox:"Keybox",pak_apply:"Apply",pak_ok:"OK",logs:"Collect logs",logs_run:"Collecting…",logs_done:"Saved:",logs_fail:"Failed — run via root shell",logs_slow:"Still running — check /sdcard",tab_main:"Configuration",tab_adv:"Advanced",adv:"Advanced",spoofvars:"Spoof variables",pak_menu:"Menu",pak_selall:"Select all",pak_unnec:"Deselect unnecessary",pak_add_dlg:"Add custom package",pak_add_ph2:"package.name",pak_selall_done:"All apps selected",pak_unnec_done:"Deselected unnecessary apps",adv_note:"These are for edge cases. Leave them default unless an app needs it — the defaults are what pass STRONG.",theme:"Theme",th_sys:"System",th_light:"Light",th_dark:"Dark",ind_fetch:"Fetching status…",ind_ok:"Status indicator restored",ind_fail:"Status not fetched — no connection? The hourly check adds it back",spf_t:"Spoof system props",spf_s:"Turn off if a wallet/bank app fails",imp_t:"Import fingerprint",imp_s:"Load a pif.json or pif.prop file",hrm_t:"Hide ROM identity",hrm_s:"Also hides ROM version & fast-charge toggle",spp_t:"Spoof security patch",spp_s:"Keep the system patch date equal to the attested one — off shows the real date after a reboot",applied:"Applied — restarting Play Integrity",imp_run:"Importing…",imp_ok:"Fingerprint imported",imp_bad:"Import failed",imp_none:"Not a pif.json / pif.prop file",pak_add:"Add custom package",pak_add_ph:"com.example.app",pak_add_bad:"Enter a valid package name",rst:"Reset",rst_t:"Reset to defaults",rst_s:"Undo every toggle here and re-run Action",rst_dlg:"Reset to defaults?",rst_body:"All toggles, spoof variables, the check interval and custom packages go back to the fresh-install defaults, and the fetched fingerprint replaces an imported one. Your keybox and per-app keybox assignments are kept. Action then runs again.",rst_ok:"Reset",rst_done:"Defaults restored — Action running",rst_fail:"Reset failed — run reset_defaults.sh via root shell"},
+  tr:{auto:"Yapılandırma",fp_t:"Fingerprint",fp_s:"Otomatik Pixel Canary yenileme",kb_t:"Keybox",kb_s:"Otomatik kontrol, sadece yeniyse yazar",status:"Keybox durumu",ind_t:"Durum göstergesi",ind_s:"Açıklamada durum öneki göster",rs_t:"ROM spoofunu engelle",rs_s:"PixelProps / pihooks motorlarını kapat",int_t:"Kontrol aralığı",donate:"Bağış",ckbx:"Özel keybox",ck_t:"Özel keybox",ck_s:"Kendi keyboxını kullan — oto çekme kapalı",ck_pick:"Keybox dosyası seç",ck_none:"Dosya seçilmedi",ck_have:"keybox.xml",ck_bad:"Geçerli keybox değil",ck_sel:"Seçili keybox:",fm_new:"En yeni",fm_old:"En eski",fm_empty:"Boş klasör",fm_cancel:"İptal",pak:"Hedef uygulamalar",pak_t:"Hedef uygulamalar",pak_s:"Uygulama, mod & keybox seç",pak_search:"Uygulama ara",pak_default:"Varsayılan keybox",pak_import:"Keybox dosyası içe aktar…",pak_mode:"Mod",pak_auto:"Oto",pak_auto_s:"AlwaysStrong karar versin",pak_gen:"Üret (Generate)",pak_gen_s:"Tüm sertifika zincirini üret (!)",pak_hack:"Hack",pak_hack_s:"Leaf sertifikayı değiştir (?)",pak_keybox:"Keybox",pak_apply:"Uygula",pak_ok:"Tamam",logs:"Log topla",logs_run:"Toplanıyor…",logs_done:"Kaydedildi:",logs_fail:"Başarısız — root shell'den çalıştır",logs_slow:"Hâlâ çalışıyor — /sdcard klasörüne bak",tab_main:"Yapılandırma",tab_adv:"Gelişmiş",adv:"Gelişmiş",spoofvars:"Spoof değişkenleri",pak_menu:"Menü",pak_selall:"Tümünü seç",pak_unnec:"Gereksizleri kaldır",pak_add_dlg:"Özel paket ekle",pak_add_ph2:"paket.adi",pak_selall_done:"Tüm uygulamalar seçildi",pak_unnec_done:"Gereksiz uygulamalar kaldırıldı",adv_note:"Bunlar istisnai durumlar içindir. Bir uygulama gerektirmedikçe varsayılan bırakın — STRONG'u geçiren varsayılanlardır.",theme:"Tema",th_sys:"Sistem",th_light:"Açık",th_dark:"Koyu",ind_fetch:"Durum alınıyor…",ind_ok:"Durum göstergesi geri geldi",ind_fail:"Durum alınamadı — internet yok mu? Saatlik kontrol geri ekler",spf_t:"Sistem proplarını spoofla",spf_s:"Cüzdan/banka uygulaman çalışmıyorsa kapat",imp_t:"Fingerprint içe aktar",imp_s:"pif.json veya pif.prop dosyası yükle",hrm_t:"ROM kimliğini gizle",hrm_s:"ROM sürümünü ve hızlı şarj anahtarını da gizler",spp_t:"Güvenlik yamasını spoofla",spp_s:"Sistem yama tarihini attestation ile aynı tutar — kapatınca yeniden başlatmada gerçek tarih döner",applied:"Uygulandı — Play Integrity yeniden başlatılıyor",imp_run:"İçe aktarılıyor…",imp_ok:"Fingerprint içe aktarıldı",imp_bad:"İçe aktarma başarısız",imp_none:"pif.json / pif.prop dosyası değil",pak_add:"Özel paket ekle",pak_add_ph:"com.example.app",pak_add_bad:"Geçerli bir paket adı gir",rst:"Sıfırla",rst_t:"Varsayılanlara dön",rst_s:"Buradaki tüm ayarları geri al ve Action'ı yeniden çalıştır",rst_dlg:"Varsayılanlara dönülsün mü?",rst_body:"Tüm anahtarlar, spoof değişkenleri, kontrol aralığı ve özel paketler ilk kurulum değerlerine döner; indirilen fingerprint içe aktarılanın yerini alır. Keybox'ın ve uygulama başına keybox atamaların korunur. Ardından Action yeniden çalışır.",rst_ok:"Sıfırla",rst_done:"Varsayılanlar geri yüklendi — Action çalışıyor",rst_fail:"Sıfırlama başarısız — reset_defaults.sh'ı root kabuğundan çalıştır"},
   ru:{auto:"Автообновление",fp_t:"Fingerprint",fp_s:"Ежечасно с Pixel Canary",kb_t:"Keybox",kb_s:"Ежечасно проверка, запись только если новее",status:"Статус keybox",ind_t:"Индикатор",ind_s:"Показывать префикс в описании",rs_t:"Блок ROM-спуфа",rs_s:"Отключить PixelProps / pihooks",int_t:"Интервал",donate:"Поддержать",logs:"Собрать логи",logs_run:"Сбор…",logs_done:"Сохранено:",logs_fail:"Ошибка — запустите через root shell",logs_slow:"Ещё выполняется — см. /sdcard",rst:"Сброс",rst_t:"Сбросить настройки",rst_s:"Отменить все переключатели и снова запустить Action",rst_dlg:"Сбросить настройки?",rst_body:"Все переключатели, spoof-переменные, интервал проверки и пользовательские пакеты вернутся к значениям по умолчанию, а загруженный fingerprint заменит импортированный. Keybox и назначения keybox для приложений сохраняются. Затем Action запустится снова.",rst_ok:"Сбросить",rst_done:"Настройки сброшены — Action выполняется",rst_fail:"Сброс не удался — запустите reset_defaults.sh из root-shell"},
   es:{auto:"Actualización automática",fp_t:"Fingerprint",fp_s:"Refresco horario desde Pixel Canary",kb_t:"Keybox",kb_s:"Comprobación horaria, escribe solo si es nuevo",status:"Estado del keybox",ind_t:"Indicador",ind_s:"Mostrar prefijo de estado en la descripción",rs_t:"Bloquear ROM spoof",rs_s:"Desactivar PixelProps / pihooks",int_t:"Intervalo",donate:"Donar",logs:"Recoger registros",logs_run:"Recogiendo…",logs_done:"Guardado:",logs_fail:"Falló — ejecuta desde una shell root",logs_slow:"Aún en curso — mira en /sdcard",rst:"Restablecer",rst_t:"Restablecer valores predeterminados",rst_s:"Deshacer todos los ajustes de aquí y volver a ejecutar Action",rst_dlg:"¿Restablecer valores predeterminados?",rst_body:"Todos los interruptores, las variables de spoof, el intervalo de comprobación y los paquetes personalizados vuelven a los valores de instalación, y el fingerprint descargado reemplaza al importado. Tu keybox y las asignaciones por app se conservan. Después Action se ejecuta de nuevo.",rst_ok:"Restablecer",rst_done:"Valores restablecidos — Action en marcha",rst_fail:"Fallo al restablecer — ejecuta reset_defaults.sh desde una shell root"},
   pt:{auto:"Atualização automática",fp_t:"Fingerprint",fp_s:"Atualização horária do Pixel Canary",kb_t:"Keybox",kb_s:"Verificação horária, grava só se for novo",status:"Status do keybox",ind_t:"Indicador",ind_s:"Mostrar prefixo de status na descrição",rs_t:"Bloquear ROM spoof",rs_s:"Desativar PixelProps / pihooks",int_t:"Intervalo",donate:"Doar",logs:"Coletar logs",logs_run:"Coletando…",logs_done:"Salvo:",logs_fail:"Falhou — execute via shell root",logs_slow:"Ainda em execução — veja /sdcard",rst:"Redefinir",rst_t:"Restaurar padrões",rst_s:"Desfazer todos os ajustes daqui e executar o Action novamente",rst_dlg:"Restaurar padrões?",rst_body:"Todos os interruptores, variáveis de spoof, o intervalo de verificação e os pacotes personalizados voltam aos padrões de instalação, e o fingerprint baixado substitui um importado. Seu keybox e as atribuições por app são mantidos. Em seguida o Action roda de novo.",rst_ok:"Redefinir",rst_done:"Padrões restaurados — Action em execução",rst_fail:"Falha ao redefinir — execute reset_defaults.sh em um shell root"},
@@ -1045,10 +1045,152 @@ async function loadStatus(pre){
   document.getElementById("kbName").textContent=metaKeyName||"";
 }
 
-async function init(){
-  const S=await readAll();
-  document.getElementById("ver").textContent=(S.ver||"v?");
+// ---- controls on the first screen ----
+const fp=document.getElementById("fp");
+const kb=document.getElementById("kb");
+const ind=document.getElementById("ind");
+const rs=document.getElementById("rs");
+const spp=document.getElementById("spp");
+const intInp=document.getElementById("int");
+const ck=document.getElementById("ck");
+const ckFileRow=document.getElementById("ckFileRow");
+const ckName=document.getElementById("ckName");
+const ckSize=document.getElementById("ckSize");
+const ckPick=document.getElementById("ckPick");
+const ckDel=document.getElementById("ckDel");
+const kbRow=kb.closest(".row");
 
+const shq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+const fmtDate=sec=>{ if(!sec) return ""; const d=new Date(sec*1000),p=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
+const fmtSize=b=> b>=1048576?(b/1048576).toFixed(1)+" MB": b>=1024?(b/1024).toFixed(1)+" KB": b+" B";
+
+// ---- advanced: raw PIF spoof variables ----
+// One toggle per spoof*/DEBUG flag in the active pif, by its real name.
+// Flipping a toggle writes a per-key override into spoof.conf and re-enforces,
+// so it survives the hourly re-apply. The STRONG defaults live in engine.sh;
+// only flip one if a specific app needs it (e.g. spoofProps off for a wallet).
+const SPOOF_CONF=CFG+"/spoof.conf";
+const PIF_DIR="/data/adb/modules/playintegrityfix";   // a standalone PlayIntegrityFork
+const spoofVarsEl=document.getElementById("spoofVars");
+let spoofStyle="num"; // "num" (1/0, Fork) | "bool" (true/false, inject-s)
+// Where the toggles read from and write to:
+//   "as"   fork/inject — AlwaysStrong's bundled PIF, via spoof.conf + reapply_spoof
+//   "pif"  Lite + a standalone PlayIntegrityFork — that module's own custom.pif.prop,
+//          applied with its killpi.sh (there is no bundled engine to enforce here)
+//   "none" Lite with no PIF installed — nothing to configure, card hidden
+let spoofMode="as";
+const isFalseVal=v=>{ v=String(v).trim().toLowerCase(); return v==="0"||v==="false"||v==="off"||v==="no"; };
+const escKey=s=>String(s).replace(/[^A-Za-z0-9_]/g,"");
+// The FULL spoof-flag set each PIF flavour supports, so the Advanced card offers
+// every option — not just the ones already written to the prop. Fork uses numeric
+// 1/0 and its own flags; inject-s uses true/false and a wider set (incl. spoofConfig
+// + DEBUG). FLAG_ON lists the flags whose STRONG default is ON.
+const FLAGSET={
+  fork:  ["spoofProvider","spoofVendingFinger","spoofBuild","spoofProps","spoofSignature","spoofVendingSdk"],
+  inject:["spoofBuild","spoofProps","spoofProvider","spoofSignature","spoofVendingBuild","spoofVendingSdk","DEBUG"]
+};
+const FLAG_ON={spoofVendingFinger:1,spoofBuild:1,spoofProps:1,spoofVendingBuild:1};
+let spoofKind="";  // "fork" | "inject" — set from lite_pif_sync --detect on the Lite line
+const spoofSrc=()=> spoofMode==="pif"
+  ? `"${PIF_DIR}/custom.pif.prop" "${PIF_DIR}/pif.prop"`
+  : `"${MOD}/custom.pif.prop" "${CFG}/custom.pif.prop" "${MOD}/pif.prop" "${CFG}/pif.prop"`;
+// pre: the prop lines readAll() already fetched for the bundled ("as") sources.
+async function loadSpoofVars(pre){
+  let lines=pre;
+  if(!lines){
+    const r=await ksuExec(`for f in ${spoofSrc()}; do [ -s "$f" ] && grep -qiE '^(spoof|DEBUG)' "$f" && { grep -iE '^(spoof|DEBUG)' "$f"; break; }; done`);
+    lines=(r.stdout||"").split("\n");
+  }
+  const cur={};
+  lines.forEach(l=>{
+    l=l.trim(); const i=l.indexOf("="); if(i<1) return;
+    const k=escKey(l.slice(0,i).trim()), v=l.slice(i+1).trim();
+    if(/^(true|false)$/i.test(v)) spoofStyle="bool";           // detect style for the bundled ("as") builds
+    if(/^(spoof|DEBUG)/i.test(k)) cur[k]=!isFalseVal(v);
+  });
+  // On the Lite line the flavour fixes the value style and the full option list.
+  if(spoofMode==="pif") spoofStyle = spoofKind==="inject" ? "bool" : "num";
+  const set = (spoofMode==="pif" && FLAGSET[spoofKind]) ? FLAGSET[spoofKind] : Object.keys(cur);
+  // full set, current value where present, otherwise the STRONG default
+  return set.map(k=>({ k, on: (k in cur) ? cur[k] : !!FLAG_ON[k] }));
+}
+function renderSpoofVars(vars){
+  if(!vars.length){ spoofVarsEl.innerHTML=`<div class="fm-empty">—</div>`; return; }
+  spoofVarsEl.innerHTML=vars.map(v=>
+    `<div class="row"><div class="row-lbl"><div class="row-t spoofvar-t">${v.k}</div></div>`
+    +`<label class="sw"><input type="checkbox" data-k="${v.k}"${v.on?" checked":""}><span class="sl"></span></label></div>`
+  ).join("");
+}
+spoofVarsEl.addEventListener("change",async e=>{
+  const inp=e.target.closest("input[data-k]"); if(!inp) return;
+  const k=escKey(inp.dataset.k), on=inp.checked;
+  const val = spoofStyle==="bool" ? (on?"true":"false") : (on?"1":"0");
+  if(spoofMode==="pif"){
+    // Lite: persist the choice as a spoof.conf override (this survives the
+    // standalone PIF's autopif, which keeps resetting its custom.pif.prop), then
+    // lite_pif_sync re-asserts it onto the PIF's prop and restarts the PIF.
+    await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/lite_pif_sync.sh" >/dev/null 2>&1`);
+  } else {
+    // fork/inject: per-key override in spoof.conf, then re-enforce on the bundled PIF.
+    await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/reapply_spoof.sh" >/dev/null 2>&1`);
+  }
+  toast(T.applied||"Applied — restarting Play Integrity",2500);
+});
+
+// ---- custom keybox row state ----
+// Smoothly expand/collapse the file row when custom is toggled; grey the
+// auto-Keybox row when custom is on (module never auto-fetches then).
+function ckSetEnabled(on){
+  ckFileRow.classList.toggle("ck-open",on);
+  if(kbRow) kbRow.classList.toggle("disabled",on);
+}
+// What the custom-keybox row shows; seeded from readAll(), re-read after a
+// pick/delete. ckRender is also called when the mirror name arrives late.
+const ckState={bytes:0,mtime:0,nm:""};
+function ckSetState(kbField,nm){
+  const t=String(kbField||"0|").split("|");
+  ckState.bytes=parseInt(t[0],10)||0; ckState.mtime=parseInt(t[1],10)||0; ckState.nm=(nm||"").trim();
+}
+async function ckRefresh(){
+  const r=await ksuExec(`{ [ -s "${KEYBOX}" ] && echo "$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "0|"; } ; echo "@$(cat "${KBNAME}" 2>/dev/null)"`);
+  const out=(r.stdout||"").split("\n");
+  ckSetState(out[0], (out[1]||"").replace(/^@/,""));
+  ckRender();
+}
+function ckRender(){
+  const bytes=ckState.bytes, mtime=ckState.mtime;
+  if(bytes>0){
+    // custom file name if the user picked one, else the auto keybox name
+    // (evokerrkeyNN) — not the generic "keybox.xml".
+    let nm=ckState.nm;
+    if(!nm) nm=metaKeyName||"keybox.xml";
+    ckName.textContent=(T.ck_sel||"Selected keybox:")+" "+nm;
+    ckName.classList.add("ck-sel");
+    ckSize.textContent=fmtSize(bytes)+" · "+fmtDate(mtime);
+    ckDel.hidden=false;
+  } else {
+    ckName.textContent=(T.ck_pick||"Select keybox file");
+    ckName.classList.remove("ck-sel");
+    ckSize.textContent=(T.ck_none||"No file selected");
+    ckDel.hidden=true;
+  }
+}
+
+// ---- last-known state: paint instantly, reconcile when the shell answers ----
+// The host's first ksu.exec takes seconds on some devices (KSUWebUI standalone
+// starts its root service lazily; the page painted at ~4 s here but the answer
+// landed at ~10 s), so the page opened on "—" and empty toggles. The last
+// readAll() result is kept in localStorage and painted before the shell is
+// even asked; the fresh answer repaints — identical in the normal case — and
+// refreshes the cache.
+const CACHE_KEY="lastState";
+function loadCache(){ try{ const o=JSON.parse(localStorage.getItem(CACHE_KEY)||"null"); return (o&&typeof o==="object")?o:null; }catch(e){ return null; } }
+function saveCache(S){ try{ localStorage.setItem(CACHE_KEY,JSON.stringify(S)); }catch(e){} }
+
+// Everything the first screen shows, from one state object (cached or fresh).
+function paintState(S){
+  document.getElementById("ver").textContent=(S.ver||"v?");
   // Which of the 9 variants is installed: the PI line (engine.sh ENGINE) and the
   // keystore engine (attest.sh ATTEST). Both already live in the module — no extra
   // file — and the pair is too long for the module name, so it lands here instead.
@@ -1058,45 +1200,71 @@ async function init(){
     const parts=[piMap[S.eng],ksMap[S.att]].filter(Boolean);
     document.getElementById("variant").textContent=parts.join(" · ");
   }
-
-  await loadStatus(S.desc||"");
-  // The keybox name comes from the mirror (up to 8 s on a bad link). It used to
-  // be awaited BEFORE the toggles were wired; now it lands whenever it lands and
-  // just refreshes the two labels that show it.
-  fetchMetaName().then(()=>{
-    document.getElementById("kbName").textContent=metaKeyName||"";
-    if(typeof ckRender==="function") ckRender();
-  });
-
-  const fp=document.getElementById("fp");
-  const kb=document.getElementById("kb");
-  const ind=document.getElementById("ind");
-  const rs=document.getElementById("rs");
-  const intInp=document.getElementById("int");
+  loadStatus(S.desc||"");
   // flag file absent = feature enabled
   fp.checked=S.no_auto_fp!=="1";
   kb.checked=S.no_auto_keybox!=="1";
   ind.checked=S.no_auto_indicator!=="1";
   rs.checked=S.no_rom_spoof_block!=="1";
+  spp.checked=S.no_spoof_patch_props!=="1";
+  // fork / inject builds fetch a fingerprint — show the toggle (hidden in the HTML;
+  // Lite keeps it hidden, a standalone PIF owns the fingerprint there)
+  if(S.eng && S.eng!=="none") document.getElementById("fpRow").hidden=false;
+  const curSec=parseInt(S.int||"",10);
+  intInp.value=Number.isFinite(curSec)&&curSec>=60 ? Math.round(curSec/60) : 60;
+  ck.checked=S.custom_keybox==="1";
+  ckSetEnabled(ck.checked);
+  ckSetState(S.kb,S.kbname);
+  ckRender();
+  // bundled-PIF builds: the spoof card straight from the prop lines in the state
+  if(S.eng && S.eng!=="none") loadSpoofVars(S.spoof||[]).then(renderSpoofVars);
+}
+
+async function init(){
+  // ---- wire the simple controls first: they only write, nothing needs the state ----
   fp.addEventListener("change",e=>writeEnabled(FP_FLAG,e.target.checked));
   kb.addEventListener("change",e=>writeEnabled(KB_FLAG,e.target.checked));
   ind.addEventListener("change",async e=>{
+    if(ind.dataset.busy) return;
+    ind.dataset.busy="1";
     await writeEnabled(IND_FLAG,e.target.checked);
-    // Off → ask status_fetch to restore description= to clean base text.
-    // On  → next auto/manual run will write the prefix back in.
-    if(!e.target.checked) await ksuExec(`sh "${MOD}/status_fetch.sh" strip`);
+    if(!e.target.checked){
+      // Off → status_fetch strips description= back to the clean base text.
+      await ksuExec(`sh "${MOD}/status_fetch.sh" strip`);
+    } else {
+      // On → fetch and stamp the prefix right now. It used to wait for the next
+      // hourly / Action run, so off→on left the pill missing for up to an hour
+      // and looked like the toggle had deleted it. Bounded: status_fetch tries
+      // up to four downloaders offline, ~45 s each.
+      toast(T.ind_fetch||"Fetching status…",0);
+      await ksuExec(`if command -v timeout >/dev/null 2>&1; then timeout -k 3 60 sh "${MOD}/status_fetch.sh" manual; else sh "${MOD}/status_fetch.sh" manual; fi >/dev/null 2>&1`);
+    }
     await loadStatus();
+    if(e.target.checked){
+      if(document.getElementById("statusRow").hidden) toast(T.ind_fail||"Status not fetched — no connection? The hourly check adds it back",5000);
+      else toast(T.ind_ok||"Status indicator restored",2500);
+    }
+    delete ind.dataset.busy;
   });
   rs.addEventListener("change",e=>writeEnabled(RS_FLAG,e.target.checked));
-
-  const spp=document.getElementById("spp");
-  spp.checked=S.no_spoof_patch_props!=="1";
   spp.addEventListener("change",async e=>{
     await writeEnabled(SPP_FLAG,e.target.checked);
     // On → pin the props right away (same call boot makes). Off → the untouched
     // value is only known to init, so it returns on the next boot.
     if(e.target.checked) await ksuExec(`sh "${MOD}/sync_patch.sh" boot >/dev/null 2>&1`);
   });
+  ck.addEventListener("change",async e=>{
+    await ksuExec(e.target.checked?`mkdir -p "${CFG}" && touch "${CK_FLAG}"`:`rm -f "${CK_FLAG}"`);
+    ckSetEnabled(e.target.checked);
+  });
+  const saveInterval=async()=>{
+    let m=parseInt(intInp.value,10);
+    if(!Number.isFinite(m)||m<1) m=60;
+    intInp.value=m;
+    await ksuExec(`mkdir -p "${CFG}" && echo ${m*60} > "${INT_FILE}"`);
+  };
+  intInp.addEventListener("blur",saveInterval);
+  intInp.addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
 
   // ---- tabs: Configuration / Advanced ----
   const tabMain=document.getElementById("tabMain"), tabAdv=document.getElementById("tabAdv");
@@ -1109,166 +1277,37 @@ async function init(){
   tabBtnMain.addEventListener("click",()=>showTab(false));
   tabBtnAdv.addEventListener("click",()=>showTab(true));
 
-  // ---- advanced: raw PIF spoof variables ----
-  // One toggle per spoof*/DEBUG flag in the active pif, by its real name.
-  // Flipping a toggle writes a per-key override into spoof.conf and re-enforces,
-  // so it survives the hourly re-apply. The STRONG defaults live in engine.sh;
-  // only flip one if a specific app needs it (e.g. spoofProps off for a wallet).
-  const SPOOF_CONF=CFG+"/spoof.conf";
-  const PIF_DIR="/data/adb/modules/playintegrityfix";   // a standalone PlayIntegrityFork
-  const spoofVarsEl=document.getElementById("spoofVars");
-  let spoofStyle="num"; // "num" (1/0, Fork) | "bool" (true/false, inject-s)
-  // Where the toggles read from and write to:
-  //   "as"   fork/inject — AlwaysStrong's bundled PIF, via spoof.conf + reapply_spoof
-  //   "pif"  Lite + a standalone PlayIntegrityFork — that module's own custom.pif.prop,
-  //          applied with its killpi.sh (there is no bundled engine to enforce here)
-  //   "none" Lite with no PIF installed — nothing to configure, card hidden
-  let spoofMode="as";
-  const isFalseVal=v=>{ v=String(v).trim().toLowerCase(); return v==="0"||v==="false"||v==="off"||v==="no"; };
-  const escKey=s=>String(s).replace(/[^A-Za-z0-9_]/g,"");
-  // The FULL spoof-flag set each PIF flavour supports, so the Advanced card offers
-  // every option — not just the ones already written to the prop. Fork uses numeric
-  // 1/0 and its own flags; inject-s uses true/false and a wider set (incl. spoofConfig
-  // + DEBUG). FLAG_ON lists the flags whose STRONG default is ON.
-  const FLAGSET={
-    fork:  ["spoofProvider","spoofVendingFinger","spoofBuild","spoofProps","spoofSignature","spoofVendingSdk"],
-    inject:["spoofBuild","spoofProps","spoofProvider","spoofSignature","spoofVendingBuild","spoofVendingSdk","DEBUG"]
-  };
-  const FLAG_ON={spoofVendingFinger:1,spoofBuild:1,spoofProps:1,spoofVendingBuild:1};
-  let spoofKind="";  // "fork" | "inject" — set from lite_pif_sync --detect on the Lite line
-  const spoofSrc=()=> spoofMode==="pif"
-    ? `"${PIF_DIR}/custom.pif.prop" "${PIF_DIR}/pif.prop"`
-    : `"${MOD}/custom.pif.prop" "${CFG}/custom.pif.prop" "${MOD}/pif.prop" "${CFG}/pif.prop"`;
-  // pre: the prop lines readAll() already fetched for the bundled ("as") sources.
-  async function loadSpoofVars(pre){
-    let lines=pre;
-    if(!lines){
-      const r=await ksuExec(`for f in ${spoofSrc()}; do [ -s "$f" ] && grep -qiE '^(spoof|DEBUG)' "$f" && { grep -iE '^(spoof|DEBUG)' "$f"; break; }; done`);
-      lines=(r.stdout||"").split("\n");
-    }
-    const cur={};
-    lines.forEach(l=>{
-      l=l.trim(); const i=l.indexOf("="); if(i<1) return;
-      const k=escKey(l.slice(0,i).trim()), v=l.slice(i+1).trim();
-      if(/^(true|false)$/i.test(v)) spoofStyle="bool";           // detect style for the bundled ("as") builds
-      if(/^(spoof|DEBUG)/i.test(k)) cur[k]=!isFalseVal(v);
-    });
-    // On the Lite line the flavour fixes the value style and the full option list.
-    if(spoofMode==="pif") spoofStyle = spoofKind==="inject" ? "bool" : "num";
-    const set = (spoofMode==="pif" && FLAGSET[spoofKind]) ? FLAGSET[spoofKind] : Object.keys(cur);
-    // full set, current value where present, otherwise the STRONG default
-    return set.map(k=>({ k, on: (k in cur) ? cur[k] : !!FLAG_ON[k] }));
-  }
-  function renderSpoofVars(vars){
-    if(!vars.length){ spoofVarsEl.innerHTML=`<div class="fm-empty">—</div>`; return; }
-    spoofVarsEl.innerHTML=vars.map(v=>
-      `<div class="row"><div class="row-lbl"><div class="row-t spoofvar-t">${v.k}</div></div>`
-      +`<label class="sw"><input type="checkbox" data-k="${v.k}"${v.on?" checked":""}><span class="sl"></span></label></div>`
-    ).join("");
-  }
-  spoofVarsEl.addEventListener("change",async e=>{
-    const inp=e.target.closest("input[data-k]"); if(!inp) return;
-    const k=escKey(inp.dataset.k), on=inp.checked;
-    const val = spoofStyle==="bool" ? (on?"true":"false") : (on?"1":"0");
-    if(spoofMode==="pif"){
-      // Lite: persist the choice as a spoof.conf override (this survives the
-      // standalone PIF's autopif, which keeps resetting its custom.pif.prop), then
-      // lite_pif_sync re-asserts it onto the PIF's prop and restarts the PIF.
-      await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/lite_pif_sync.sh" >/dev/null 2>&1`);
-    } else {
-      // fork/inject: per-key override in spoof.conf, then re-enforce on the bundled PIF.
-      await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/reapply_spoof.sh" >/dev/null 2>&1`);
-    }
-    toast(T.applied||"Applied — restarting Play Integrity",2500);
+  // ---- paint from the last run right away, then from disk ----
+  const cached=loadCache();
+  if(cached) paintState(cached);
+  const S=await readAll();
+  paintState(S);
+  saveCache(S);
+  // The keybox name comes from the mirror (up to 8 s on a bad link). It used to
+  // be awaited BEFORE the toggles were wired; now it lands whenever it lands and
+  // just refreshes the two labels that show it.
+  fetchMetaName().then(()=>{
+    document.getElementById("kbName").textContent=metaKeyName||"";
+    ckRender();
   });
-  // Pick the target. On the Lite line there's no bundled engine to enforce flags,
-  // so the toggles drive a standalone PlayIntegrityFork if one is installed; with
-  // no PIF there's nothing to configure, so the card is hidden.
-  {
-    const _e=S.eng||"";
-    const _fpRow=document.getElementById("fpRow");   // hidden by default in the HTML
-    if(_e==="none"){
-      // Lite ships no fingerprint engine — a standalone PIF owns the fingerprint and
-      // AlwaysStrong mirrors it — so the "auto fingerprint refresh" toggle is
-      // meaningless here; it stays hidden. Show the spoof card for a recognised
-      // standalone PlayIntegrityFork OR Fix inject-s (lite_pif_sync --detect prints
-      // its kind); the toggles read that PIF's own flags (so inject-s naturally shows
-      // spoofVendingBuild, not Fork's spoofVendingFinger). No module or an id-squatter
-      // (Integrity Box) -> hidden, nothing of ours to configure.
-      const _k=(await ksuExec(`sh "${MOD}/lite_pif_sync.sh" --detect 2>/dev/null`)).stdout.trim();
-      spoofMode = (_k==="fork"||_k==="inject") ? "pif" : "none";
-      spoofKind = _k;   // drives the full flag list + value style (fork=num, inject=bool)
-    } else if(_fpRow){
-      _fpRow.hidden=false;   // fork / inject builds do fetch a fingerprint — show the toggle
-    }
+
+  // Lite line: there's no bundled engine to enforce spoof flags, so the toggles
+  // drive a standalone PlayIntegrityFork OR Fix inject-s if one is installed
+  // (lite_pif_sync --detect prints its kind; the toggles then read that PIF's own
+  // flags, so inject-s naturally shows spoofVendingBuild, not Fork's
+  // spoofVendingFinger). No module or an id-squatter (Integrity Box) -> the card
+  // is hidden, nothing of ours to configure. Needs a shell, so it runs after the
+  // first paint.
+  if((S.eng||"")==="none"){
+    const _k=(await ksuExec(`sh "${MOD}/lite_pif_sync.sh" --detect 2>/dev/null`)).stdout.trim();
+    spoofMode = (_k==="fork"||_k==="inject") ? "pif" : "none";
+    spoofKind = _k;   // drives the full flag list + value style (fork=num, inject=bool)
     const _sec=document.getElementById("spoofSection");
     if(spoofMode==="none"){ if(_sec) _sec.hidden=true; }
-    else { renderSpoofVars(await loadSpoofVars(spoofMode==="as" ? S.spoof : null)); }
+    else { renderSpoofVars(await loadSpoofVars(null)); }
   }
-
-  const curSec=parseInt(S.int||"",10);
-  intInp.value=Number.isFinite(curSec)&&curSec>=60 ? Math.round(curSec/60) : 60;
-  const saveInterval=async()=>{
-    let m=parseInt(intInp.value,10);
-    if(!Number.isFinite(m)||m<1) m=60;
-    intInp.value=m;
-    await ksuExec(`mkdir -p "${CFG}" && echo ${m*60} > "${INT_FILE}"`);
-  };
-  intInp.addEventListener("blur",saveInterval);
-  intInp.addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
 
   // ---- custom keybox + file manager ----
-  const ck=document.getElementById("ck");
-  const ckFileRow=document.getElementById("ckFileRow");
-  const ckName=document.getElementById("ckName");
-  const ckSize=document.getElementById("ckSize");
-  const ckPick=document.getElementById("ckPick");
-  const ckDel=document.getElementById("ckDel");
-  const kbRow=kb.closest(".row");
-
-  const shq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
-  const fmtDate=sec=>{ if(!sec) return ""; const d=new Date(sec*1000),p=n=>String(n).padStart(2,"0");
-    return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
-  const fmtSize=b=> b>=1048576?(b/1048576).toFixed(1)+" MB": b>=1024?(b/1024).toFixed(1)+" KB": b+" B";
-
-  // Smoothly expand/collapse the file row when custom is toggled; grey the
-  // auto-Keybox row when custom is on (module never auto-fetches then).
-  function ckSetEnabled(on){
-    ckFileRow.classList.toggle("ck-open",on);
-    if(kbRow) kbRow.classList.toggle("disabled",on);
-  }
-  // What the custom-keybox row shows; seeded from readAll(), re-read after a
-  // pick/delete. ckRender is also called when the mirror name arrives late.
-  const ckState={bytes:0,mtime:0,nm:""};
-  function ckSetState(kbField,nm){
-    const t=String(kbField||"0|").split("|");
-    ckState.bytes=parseInt(t[0],10)||0; ckState.mtime=parseInt(t[1],10)||0; ckState.nm=(nm||"").trim();
-  }
-  ckSetState(S.kb,S.kbname);
-  async function ckRefresh(){
-    const r=await ksuExec(`{ [ -s "${KEYBOX}" ] && echo "$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "0|"; } ; echo "@$(cat "${KBNAME}" 2>/dev/null)"`);
-    const out=(r.stdout||"").split("\n");
-    ckSetState(out[0], (out[1]||"").replace(/^@/,""));
-    ckRender();
-  }
-  function ckRender(){
-    const bytes=ckState.bytes, mtime=ckState.mtime;
-    if(bytes>0){
-      // custom file name if the user picked one, else the auto keybox name
-      // (evokerrkeyNN) — not the generic "keybox.xml".
-      let nm=ckState.nm;
-      if(!nm) nm=metaKeyName||"keybox.xml";
-      ckName.textContent=(T.ck_sel||"Selected keybox:")+" "+nm;
-      ckName.classList.add("ck-sel");
-      ckSize.textContent=fmtSize(bytes)+" · "+fmtDate(mtime);
-      ckDel.hidden=false;
-    } else {
-      ckName.textContent=(T.ck_pick||"Select keybox file");
-      ckName.classList.remove("ck-sel");
-      ckSize.textContent=(T.ck_none||"No file selected");
-      ckDel.hidden=true;
-    }
-  }
 
   // file manager modal
   const fm=document.getElementById("fm"), fmList=document.getElementById("fmList");
@@ -1411,13 +1450,6 @@ async function init(){
     if(item.dataset.dir==="1"){ fmPath=np; fmNav(); } else fmChoose(np,name);
   });
 
-  ck.checked=S.custom_keybox==="1";
-  ckSetEnabled(ck.checked);
-  ckRender();
-  ck.addEventListener("change",async e=>{
-    await ksuExec(e.target.checked?`mkdir -p "${CFG}" && touch "${CK_FLAG}"`:`rm -f "${CK_FLAG}"`);
-    ckSetEnabled(e.target.checked);
-  });
   ckPick.addEventListener("click",fmOpen);
   ckName.addEventListener("click",fmOpen);
 
