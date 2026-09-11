@@ -45,3 +45,7 @@ attest_start() {
 attest_alive() {
     pidof TEESimulator >/dev/null 2>&1 || pidof daemon >/dev/null 2>&1
 }
+
+# keybox.xml / target.txt changed. TEESimulator-RS watches /data/adb/tricky_store
+# itself, so there is nothing to poke.
+attest_notify() { return 0; }

@@ -16,7 +16,8 @@
 # build.sh copies this file in as attest.sh. customize.sh sources it for
 # attest_install (with $ABI_DIR / $ARCH / $ZIPFILE / $MODPATH + install_file() /
 # ui_print() in scope); service.sh sources it for attest_early / attest_start /
-# attest_alive / teesim_gen_config (with $MODDIR in scope).
+# attest_alive / teesim_gen_config (with $MODDIR in scope); keybox_fetch.sh and
+# build_target_txt.sh source it for attest_notify (with $MODPATH in scope).
 
 ATTEST=teesim
 ATTEST_NAME="TEESimulator (JingMatrix)"
@@ -30,7 +31,16 @@ attest_early() { return 0; }
 # The JSON shape mirrors the upstream config.default.json exactly (a known-valid
 # schema) with only the "apps" array swapped for the current target.txt, so the
 # per-app targeting picked in the WebUI reaches TEESimulator too. Called at boot
-# (attest_start) and hourly (service.sh) so it tracks target.txt changes.
+# (attest_start), hourly (service.sh) and through attest_notify whenever
+# keybox.xml or target.txt is rewritten.
+#
+# Rewriting config.json is also how the daemon learns about a NEW KEYBOX: its
+# FileObserver only watches /data/adb/teesim for config.json / *.xml events, and
+# our keybox.xml there is a symlink into /data/adb/tricky_store — inotify never
+# reports a write to a symlink's target. The daemon re-reads the keybox bytes on
+# every config push, so a fresh config.json is enough to make it pick the new
+# keybox up (and to recover from the first-boot "keybox not found" state, where
+# it keeps running on no config until one loads).
 teesim_gen_config() {
     _tgt=/data/adb/tricky_store/target.txt
     _cfg="$TEESIM_DATA/config.json"
@@ -190,3 +200,7 @@ attest_start() {
 # The App renames its own process to "TEESimulator" (overriding app_process's
 # --nice-name=teesim), so match on the class-path argv instead of a fixed name.
 attest_alive() { pgrep -f 'org.matrix.teesim.App' >/dev/null 2>&1 || pidof teesim >/dev/null 2>&1; }
+
+# keybox.xml / target.txt changed: push a fresh config so the daemon re-reads
+# both (see teesim_gen_config for why the keybox needs this).
+attest_notify() { teesim_gen_config; }

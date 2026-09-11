@@ -173,4 +173,17 @@ chmod 600 "$TARGET"
 # confuse anyone debugging.
 rm -f "$CONFIG_DIR/.keybox.sha256" 2>/dev/null
 log "$TARGET updated ($(wc -c < "$TARGET") bytes)."
+
+# Tell the attestation engine the keybox changed. TEESimulator-RS and
+# TrickyStoreOSS watch this directory themselves; JingMatrix TEESimulator only
+# watches /data/adb/teesim, where our keybox is a symlink into here, and inotify
+# never sees a write to a symlink's target — its adapter rewrites config.json so
+# the daemon re-reads the keybox. No-op on the other engines. Subshell so the
+# adapter's variables don't leak into this script.
+_md=$(cd "${0%/*}" 2>/dev/null && pwd)
+[ -f "$_md/attest.sh" ] || _md=/data/adb/modules/tricky_store
+if [ -f "$_md/attest.sh" ]; then
+    ( MODPATH="$_md"; . "$_md/attest.sh" 2>/dev/null
+      command -v attest_notify >/dev/null 2>&1 && attest_notify ) >/dev/null 2>&1
+fi
 exit 0

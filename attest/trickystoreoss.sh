@@ -42,3 +42,7 @@ attest_start() {
 }
 
 attest_alive() { pidof TrickyStoreOSS >/dev/null 2>&1; }
+
+# keybox.xml / target.txt changed. TrickyStoreOSS watches /data/adb/tricky_store
+# itself, so there is nothing to poke.
+attest_notify() { return 0; }

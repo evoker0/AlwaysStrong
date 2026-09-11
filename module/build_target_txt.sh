@@ -150,3 +150,16 @@ if [ -f "$MANIFEST" ]; then
     done < "$MANIFEST"
     printf '%s' "$NEWMAN" > "$MANIFEST.tmp" && mv -f "$MANIFEST.tmp" "$MANIFEST"
 fi
+
+# Tell the attestation engine target.txt changed. TEESimulator-RS and
+# TrickyStoreOSS watch the file themselves; JingMatrix TEESimulator has its own
+# /data/adb/teesim/config.json, and its adapter regenerates the app list from
+# target.txt there. Runs for every caller (Action, aswatcher, WebUI), so a target
+# change reaches that engine now instead of on the hourly tick. Subshell so the
+# adapter's variables don't leak.
+_md=$(cd "${0%/*}" 2>/dev/null && pwd)
+[ -f "$_md/attest.sh" ] || _md=/data/adb/modules/tricky_store
+if [ -f "$_md/attest.sh" ]; then
+    ( MODPATH="$_md"; . "$_md/attest.sh" 2>/dev/null
+      command -v attest_notify >/dev/null 2>&1 && attest_notify ) >/dev/null 2>&1
+fi
