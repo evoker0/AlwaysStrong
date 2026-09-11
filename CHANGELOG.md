@@ -3,6 +3,7 @@
 ## Unreleased
 
 **New**
+- **Releases are verifiable.** Every release now carries a `SHA256SUMS.txt` with the sha256 of each zip, checkable with `sha256sum -c SHA256SUMS.txt`, and the same hashes appear in the release notes. The two shipped native binaries, `asfetch` and `aswatcher`, are listed there too, and the **Native binaries** workflow now rebuilds *both* from source on a runner (it only did `asfetch` before), printing the rebuilt hashes next to the committed ones and reporting whether they match. See **Verifying a download** in the README.
 - **WebUI theme picker**: a new button next to the language button chooses System / Light / Dark. The choice is remembered and applied before the first paint, so a forced theme never flashes the system one.
 
 **Changed**

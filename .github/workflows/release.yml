@@ -47,6 +47,30 @@ jobs:
       - name: Build the release zips (fork, inject, nopif on TEESimulator-RS)
         run: bash build.sh
 
+      - name: Checksums for the release
+        # Published so anyone can verify the exact zip they flashed, and match
+        # the shipped native binaries against a rebuild. The committed prebuilts
+        # are hashed (not copies unpacked from a zip) because those are the very
+        # bytes .github/workflows/native.yml produces, so a rerun of that
+        # workflow is directly comparable.
+        #
+        # Only the zip lines are live: `sha256sum -c SHA256SUMS.txt` next to the
+        # downloaded files checks them and skips the commented binary lines,
+        # which name repo paths a downloader doesn't have.
+        run: |
+          set -eu
+          {
+            echo "# AlwaysStrong ${GITHUB_REF_NAME} - sha256"
+            echo "# Release zips, verify with: sha256sum -c SHA256SUMS.txt"
+            ( cd out && sha256sum AlwaysStrong-*.zip )
+            echo "#"
+            echo "# Native binaries shipped inside those zips, built from"
+            echo "# native/asfetch/src and native/watcher/src by native.yml."
+            echo "# Reference only - rerun that workflow to reproduce them."
+            find native -path '*/prebuilt/*' -type f | sort | xargs sha256sum | sed 's/^/# /'
+          } > SHA256SUMS.txt
+          echo "----- SHA256SUMS.txt -----"; cat SHA256SUMS.txt
+
       - name: Release notes from CHANGELOG
         run: |
           awk -v v="## ${GITHUB_REF_NAME}" '
@@ -54,6 +78,21 @@ jobs:
             /^## / {f=0}
             f {print}
           ' CHANGELOG.md > RELEASE_NOTES.md
+          {
+            echo
+            echo "---"
+            echo
+            echo "### Verify what you flashed"
+            echo
+            echo '```'
+            cat SHA256SUMS.txt
+            echo '```'
+            echo
+            echo "Every zip here is built from this tag by \`.github/workflows/release.yml\` on a"
+            echo "GitHub runner and is never uploaded by hand. The two native binaries are plain"
+            echo "Rust, with full source in \`native/asfetch\` and \`native/watcher\`; rerun"
+            echo "\`.github/workflows/native.yml\` to rebuild them and compare the hashes above."
+          } >> RELEASE_NOTES.md
           echo "----- notes -----"; cat RELEASE_NOTES.md
 
       - name: Publish release
@@ -61,7 +100,9 @@ jobs:
         with:
           name: ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
-          files: out/AlwaysStrong-*.zip
+          files: |
+            out/AlwaysStrong-*.zip
+            SHA256SUMS.txt
           draft: false
           prerelease: false
           fail_on_unmatched_files: true
