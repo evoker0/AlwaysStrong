@@ -9,7 +9,25 @@ esac
 [ -z "$MODPATH" ] && MODPATH="$PWD"
 cd "$MODPATH" 2>/dev/null
 
-set +o standalone 2>/dev/null
+# Hop into the manager's busybox ash before doing anything else. Magisk used to
+# run action.sh inside its own ash, but newer Magisk Alpha builds (app 96221b69+)
+# start it with /system/bin/sh — mksh — and the `set +o standalone` below is a
+# special-builtin error there: mksh exits on it, silently (stderr is discarded),
+# and the Action screen sits black with no output at all. Everything below is
+# written for ash, so re-exec once under the first busybox we find (AS_ASH marks
+# the hop; the exported env — AS_FAST, the "logs" argument — survives exec).
+# With no busybox at all we stay put and only flip standalone if this shell
+# knows the option.
+if [ -z "$AS_ASH" ]; then
+    for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/busybox \
+              /data/adb/modules/busybox-ndk/system/*/busybox; do
+        if [ -x "$bb" ]; then
+            export AS_ASH=1
+            exec "$bb" sh "$MODPATH/action.sh" "$@"
+        fi
+    done
+fi
+(set +o standalone) 2>/dev/null && set +o standalone
 unset ASH_STANDALONE
 
 # Boot auto-press sets AS_FAST=1: all the sleeps below are cosmetic progress

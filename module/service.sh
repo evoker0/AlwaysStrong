@@ -3,7 +3,9 @@ MODDIR="${0%/*}"
 MODPATH="$MODDIR"
 cd "$MODDIR"
 
-set +o standalone 2>/dev/null
+# Probe in a subshell first: under mksh / toybox sh the option is unknown and a
+# bare `set +o standalone` is a fatal special-builtin error (see action.sh).
+(set +o standalone) 2>/dev/null && set +o standalone
 unset ASH_STANDALONE
 
 [ -f "$MODDIR/common_func.sh" ] && . "$MODDIR/common_func.sh"
