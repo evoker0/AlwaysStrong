@@ -23,7 +23,7 @@ One-flash `STRONG` Play Integrity for Magisk / KernelSU / APatch. It bundles [TE
 To use this module you need one of the following (latest versions), with a Zygisk implementation installed:
 
 - [Magisk](https://github.com/topjohnwu/Magisk) with Zygisk enabled — a standalone [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) / [ReZygisk](https://github.com/PerformanC/ReZygisk) / [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) is recommended over Magisk's built-in Zygisk, which is more easily detected
-- [KernelSU](https://github.com/tiann/KernelSU) or [KernelSU Next](https://github.com/KernelSU-Next/KernelSU-Next) with [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) or [ReZygisk](https://github.com/PerformanC/ReZygisk) or [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) module installed
+- [KernelSU](https://github.com/tiann/KernelSU) or [SukiSU Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra) with [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) or [ReZygisk](https://github.com/PerformanC/ReZygisk) or [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) module installed
 - [APatch](https://github.com/bmax121/APatch) with [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) or [ReZygisk](https://github.com/PerformanC/ReZygisk) or [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) module installed
 
 Android 10+ (SDK 29) is required.
@@ -131,6 +131,24 @@ All config files live at `/data/adb/tricky_store/` and are reloaded automaticall
 ```
 
 `build.sh` downloads the pinned upstream release ZIPs, overlays the glue scripts in `module/`, and produces the installable ZIPs (on Windows run it from WSL or Git Bash). Engines, repo layout, native binaries and the upstream auto-release: **[docs/ADVANCED.md](docs/ADVANCED.md)**.
+
+## Verifying a download
+
+Nothing in a release is uploaded by hand. `.github/workflows/release.yml` builds the zips
+from the tagged tree on a GitHub runner, and every release carries a `SHA256SUMS.txt` with
+their hashes:
+
+```bash
+sha256sum -c SHA256SUMS.txt   # next to the downloaded zips
+```
+
+The zips ship two compiled binaries, `asfetch` and `aswatcher`. Both are plain Rust with
+their full source in this repo, under `native/asfetch` and `native/watcher`, and neither
+is a third-party blob. Their hashes are listed in the same `SHA256SUMS.txt` as reference
+lines. To confirm those bytes really come from that source, run the **Native binaries**
+workflow from the Actions tab: it rebuilds both from source with a pinned NDK, prints the
+sha256 of the result next to the committed ones, and says whether they match. You can also
+rebuild locally with `scripts/build-asfetch.sh` and `scripts/build-watcher.sh`.
 
 ## Credits
 
