@@ -1223,7 +1223,7 @@ async function init(){
         +" && ( grep -qxF "+shq(fn)+" "+shq(MAN)+" 2>/dev/null || printf '%s\\n' "+shq(fn)+" >> "+shq(MAN)+" )");
       fmClose(); const cb=fmImportCb; fmImportCb=null; if(cb) cb(fn); return;
     }
-    await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(KEYBOX)+" && chmod 600 "+shq(KEYBOX)+" && rm -f "+shq(CFG+"/.keybox_seed")+" && printf '%s' "+shq(name)+" > "+shq(KBNAME));
+    await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(KEYBOX)+" && chmod 600 "+shq(KEYBOX)+" && printf '%s' "+shq(name)+" > "+shq(KBNAME));
     fmClose(); await ckRefresh();
   }
   async function fmOpen(mode){

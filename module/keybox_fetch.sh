@@ -162,9 +162,6 @@ DISK_HASH=""
 
 # ---- Change detection (compare actual on-disk XML, not a side-state) ---
 if [ -n "$DISK_HASH" ] && [ "$DISK_HASH" = "$NEW_XML_HASH" ]; then
-    # What is on disk IS what the mirror serves, so it is not the install-time
-    # placeholder any more (customize.sh marks that with .keybox_seed).
-    rm -f "$CONFIG_DIR/.keybox_seed" 2>/dev/null
     log "already up to date."
     exit 2
 fi
@@ -172,7 +169,6 @@ fi
 # ---- Atomic replace ----
 mv -f "$TMP/keybox.xml" "$TARGET" || { log "mv to $TARGET failed."; exit 1; }
 chmod 600 "$TARGET"
-rm -f "$CONFIG_DIR/.keybox_seed" 2>/dev/null   # a fetched keybox replaced the install-time placeholder
 # Vestigial state file from older versions — clean up so it doesn't
 # confuse anyone debugging.
 rm -f "$CONFIG_DIR/.keybox.sha256" 2>/dev/null

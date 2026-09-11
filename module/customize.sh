@@ -194,27 +194,13 @@ fi
 # --- /data/adb/tricky_store config ----------------------------------------
 mkdir -p "$CONFIG_DIR"
 if [ -f "$CONFIG_DIR/keybox.xml" ]; then
-  # A kept keybox that is byte-identical to the demo keybox in this zip is still
-  # the placeholder (a reinstall where the fetch never succeeded, or an
-  # uninstall that dropped the marker) — re-mark it so Action stays honest.
-  _kept=$(sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null | awk '{print tolower($1)}')
-  _ship=$(unzip -p "$ZIPFILE" keybox.xml 2>/dev/null | sha256sum 2>/dev/null | awk '{print tolower($1)}')
-  if [ -n "$_kept" ] && [ "$_kept" = "$_ship" ]; then
-    echo "$_kept" > "$CONFIG_DIR/.keybox_seed"
-    ui_print "keybox kept — still the placeholder, real one is fetched on boot"
-  else
-    ui_print "keybox kept ($(wc -c < "$CONFIG_DIR/keybox.xml") bytes)"
-  fi
+  ui_print "keybox kept ($(wc -c < "$CONFIG_DIR/keybox.xml") bytes)"
 else
-  # No keybox yet: seed the upstream demo keybox so the engine has something to
-  # load, and MARK it as a placeholder. It is public (and revoked), so it can
-  # never reach STRONG — Action and the log collector must not call it "ok".
-  # The marker holds the seed's sha256; anything that replaces keybox.xml (the
-  # fetch, a WebUI import, adb push) breaks the match and clears the state.
+  # No keybox yet: seed the upstream demo keybox so the engine has a file to
+  # load. It is public, so it never reaches STRONG on its own — Action fetches
+  # the real one from the mirror (and says so when it cannot).
   install_file "keybox.xml" "$CONFIG_DIR"
-  _seed=$(sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null | awk '{print tolower($1)}')
-  echo "${_seed:-unknown}" > "$CONFIG_DIR/.keybox_seed"
-  ui_print "placeholder keybox seeded — the real one is fetched on first boot"
+  ui_print "demo keybox seeded — the real one is fetched on first boot"
 fi
 
 # target.txt is (re)built on boot (service.sh) and on every [Action] tap — just

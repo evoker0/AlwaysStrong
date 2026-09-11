@@ -128,38 +128,41 @@ if [ -f "$CONFIG_DIR/custom_keybox" ]; then
         row "⚠️" "custom keybox not set"
     fi
 elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
-    # A fresh install ships the upstream demo keybox as a placeholder (public,
-    # revoked — never STRONG) and customize.sh marks it in .keybox_seed with its
-    # sha256. While the file on disk still matches that marker there is no real
-    # keybox, however valid the XML looks, so it must not be reported as "ok".
-    keybox_looks_valid() { [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; }
-    keybox_is_seed() {
-        [ -f "$CONFIG_DIR/.keybox_seed" ] || return 1
-        _seed=$(cat "$CONFIG_DIR/.keybox_seed" 2>/dev/null)
-        [ "$_seed" = "unknown" ] && return 0
-        _sha=""
-        if command -v sha256sum >/dev/null 2>&1; then _sha=$(sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null)
-        elif [ -n "$BB" ]; then _sha=$("$BB" sha256sum < "$CONFIG_DIR/keybox.xml" 2>/dev/null); fi
-        [ -n "$_sha" ] || return 0            # cannot hash: trust the marker
-        [ "$(echo "$_sha" | awk '{print tolower($1)}')" = "$_seed" ]
+    # "keybox ok" used to mean "a keybox-looking file exists" — but a fresh
+    # install seeds the upstream demo keybox (public, never STRONG) just so the
+    # engine has a file, so with no internet the very first tap said "ok" over a
+    # keybox that cannot work. Now the mirror is the judge: ask it every tap.
+    #
+    # 1. Quick reachability probe (ICMP, then DNS for networks that drop ping):
+    #    offline is reported as offline, with no fetch attempt — keybox_fetch's
+    #    four downloaders would otherwise spend up to ~80 s of idle timeouts.
+    # 2. Online: run the fetch synchronously (bounded — an unbounded fetch here
+    #    is what left the Action on a blank screen). Its exit code is the verdict:
+    #    0 = new keybox written, 2 = the file on disk IS what the mirror serves,
+    #    1 = the mirror could not be reached / rejected the payload.
+    row "🔑" "checking keybox..."
+    net_ok() {
+        bounded 4 ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && return 0
+        bounded 4 ping -c1 -W2 8.8.8.8 >/dev/null 2>&1 && return 0
+        _h=$(echo "${KEYBOX_BASE_URL:-http://evoker.qzz.io}" | sed -e 's#^[a-z]*://##' -e 's#/.*##' -e 's#:.*##')
+        [ -n "$BB" ] && bounded 5 "$BB" nslookup "$_h" >/dev/null 2>&1 && return 0
+        return 1
     }
-    if keybox_looks_valid && ! keybox_is_seed; then
-        bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1 &
-        row "🔑" "keybox ok"
+    if ! net_ok; then
+        row "⚠️" "no internet — keybox not fetched"
+        row "🌐" "connect and tap again (or hourly)"
     else
-        # First tap on a fresh install (no keybox, or only the placeholder):
-        # synchronous, so it MUST be bounded — an unbounded fetch here left the
-        # Action stuck on a blank screen.
-        row "🔑" "fetching keybox..."
         bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
-        if keybox_looks_valid && ! keybox_is_seed; then
-            row "🔑" "keybox updated"
-        elif keybox_looks_valid; then
-            row "⚠️" "placeholder keybox — fetch failed"
-            row "🌐" "no internet? retried hourly"
-        else
-            row "⚠️" "keybox missing"
-        fi
+        case "$?" in
+            0) row "🔑" "keybox updated" ;;
+            2) row "🔑" "keybox ok" ;;
+            *) row "⚠️" "keybox fetch failed"
+               if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
+                   row "🌐" "server unreachable — kept current, retried hourly"
+               else
+                   row "🌐" "server unreachable — no keybox yet"
+               fi ;;
+        esac
     fi
 else
     row "⚠️" "keybox fetch not available"
