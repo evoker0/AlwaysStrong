@@ -78,7 +78,7 @@ body{
   padding-bottom:max(40px,env(safe-area-inset-bottom));
   padding-left:max(18px,env(safe-area-inset-left));
   padding-right:max(18px,env(safe-area-inset-right));
-  max-width:520px;margin:0 auto;
+  max-width:520px;margin:0 auto;position:relative;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
 }
@@ -274,9 +274,12 @@ h1{
 .fm-cancel:active{background:var(--a14)}
 
 /* ---------------- language picker ---------------- */
+/* Both buttons live in the page's top-right corner and scroll away with the
+   header (absolute inside <body>, which is the centred column), not pinned
+   over the content. */
 .lang-btn{
-  position:fixed;top:env(safe-area-inset-top,0);right:0;
-  margin:18px;width:38px;height:38px;border-radius:50%;
+  position:absolute;top:max(22px,env(safe-area-inset-top));right:0;
+  margin:0 18px;width:38px;height:38px;border-radius:50%;
   background:var(--card);border:0;color:var(--fg);
   font-size:17px;cursor:pointer;line-height:1;padding:0;
   box-shadow:var(--shadow);
@@ -291,7 +294,7 @@ h1{
 .theme-btn svg{width:19px;height:19px;display:block}
 #themePop{right:64px}
 .lang-pop{
-  position:fixed;top:64px;right:18px;
+  position:absolute;top:calc(max(22px,env(safe-area-inset-top)) + 46px);right:18px;
   background:var(--card);border-radius:14px;
   padding:6px 0;min-width:172px;max-height:70vh;overflow:auto;
   box-shadow:var(--shadow-pop);
@@ -452,9 +455,10 @@ h1{
   body{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
   h1{font-size:26px}
   .hd{padding-inline-end:90px}
-  .lang-btn{margin:14px;width:36px;height:36px}
+  .lang-btn{margin:0 12px;width:36px;height:36px}
   .theme-btn{right:44px}
-  #themePop{right:58px}
+  #themePop{right:56px}
+  .lang-pop{right:12px}
   .row{padding:12px 13px;gap:10px}
   .status{padding:12px 13px}
   .kb-name{max-width:38vw}
@@ -483,7 +487,7 @@ h1{
 <button id="langBtn" class="lang-btn" aria-label="Language">🌐</button>
 <div id="langPop" class="lang-pop" hidden></div>
 <button id="themeBtn" class="lang-btn theme-btn" aria-label="Theme" aria-haspopup="true">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7z"/></svg>
 </button>
 <div id="themePop" class="lang-pop" hidden></div>
 
