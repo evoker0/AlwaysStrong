@@ -120,7 +120,7 @@ dl_to() {
 # --- Header ---
 echo ""
 echo "  $LINE"
-row "🛡️" "AlwaysStrong  ${VER}"
+row "🔒" "AlwaysStrong  ${VER}"
 echo "  $LINE"
 echo ""
 row "⏳" "initializing..."
@@ -141,9 +141,9 @@ sleep 1
 if [ -f "$CONFIG_DIR/custom_keybox" ]; then
     if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
         row "🔑" "custom keybox — skip fetch"
-        row "ℹ️" "disable in webui for auto"
+        row "💡" "disable in webui for auto"
     else
-        row "⚠️" "custom keybox not set"
+        row "❗" "custom keybox not set"
     fi
 elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
     # "keybox ok" used to mean "a keybox-looking file exists" — but a fresh
@@ -167,14 +167,14 @@ elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
         return 1
     }
     if ! net_ok; then
-        row "⚠️" "no internet — keybox not fetched"
+        row "❗" "no internet — keybox not fetched"
         row "🌐" "connect and tap again (or hourly)"
     else
         bounded 400 sh "$MODPATH/keybox_fetch.sh" >/dev/null 2>&1
         case "$?" in
             0) row "🔑" "keybox updated" ;;
             2) row "🔑" "keybox ok" ;;
-            *) row "⚠️" "keybox fetch failed"
+            *) row "❗" "keybox fetch failed"
                if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
                    row "🌐" "server unreachable — kept current, retried hourly"
                else
@@ -183,7 +183,7 @@ elif [ -x "$MODPATH/keybox_fetch.sh" ]; then
         esac
     fi
 else
-    row "⚠️" "keybox fetch not available"
+    row "❗" "keybox fetch not available"
 fi
 sleep 1
 
@@ -200,11 +200,11 @@ if [ "$ENGINE" = "none" ]; then
 _synced=$(bounded 180 sh "$MODPATH/lite_pif_sync.sh" 2>/dev/null)
 case "$_synced" in
     "OK fork")   row "🔗" "synced with PlayIntegrityFork"
-                 row "⚙️" "set fingerprint in Fork's WebUI" ;;
+                 row "🔧" "set fingerprint in Fork's WebUI" ;;
     "OK inject") row "🔗" "synced with PlayIntegrityFix (inject)"
-                 row "⚙️" "set fingerprint in inject's WebUI" ;;
+                 row "🔧" "set fingerprint in inject's WebUI" ;;
     *)           row "🚫" "PIF-less build"
-                 row "🛡️" "attestation + keybox only" ;;
+                 row "🔒" "attestation + keybox only" ;;
 esac
 sleep 1
 else
@@ -268,7 +268,7 @@ fi
 case "$FP_SRC" in
     pif|native) row "🌐" "fingerprint ok" ;;
     local)      row "🌐" "fingerprint ok (local)" ;;
-    *)          row "⚠️" "fingerprint failed" ;;
+    *)          row "❗" "fingerprint failed" ;;
 esac
 sleep 1
 
@@ -291,7 +291,7 @@ PIF=$(pick_pif)
 MD=$(grep -m1 '^MODEL=' "$PIF" 2>/dev/null | cut -d= -f2-)
 [ -z "$PATCH" ] && PATCH=$(grep -m1 '^SECURITY_PATCH=' "$PIF" 2>/dev/null | cut -d= -f2-)
 
-row "🗓️" "${PATCH:-unknown}"
+row "📅" "${PATCH:-unknown}"
 sleep 1
 
 # --- Step 5: Device ---
