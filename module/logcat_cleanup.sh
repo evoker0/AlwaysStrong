@@ -13,7 +13,7 @@
 # other apps' logs. Source-level tag suppression (step 1) makes that
 # unnecessary — our lines never enter the buffer in the first place.
 #
-# Opt out: touch /data/adb/tricky_store/no_logcat_cleanup
+# Opt out: logcat_cleanup=0 in alwaysstrong/config
 
 MODDIR="${MODPATH:-$(dirname "$0")}"
 LOG_DIR="$MODDIR/logs"

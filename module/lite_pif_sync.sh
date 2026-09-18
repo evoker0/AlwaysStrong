@@ -24,6 +24,7 @@
 
 MODDIR=${0%/*}; [ "$MODDIR" = "$0" ] && MODDIR=/data/adb/modules/tricky_store
 CONFIG_DIR=/data/adb/tricky_store
+[ -f "$MODDIR/as_store.sh" ] && . "$MODDIR/as_store.sh"
 PIF_DIR=/data/adb/modules/playintegrityfix
 
 # Lite only, with a live module actually present.
@@ -82,7 +83,7 @@ if [ "$PIF_KIND" = fork ]; then
     case "$_sdk" in ''|*[!0-9]*) : ;; *) [ "$_sdk" -le 32 ] && _svf=0 ;; esac
     for _kv in "spoofProvider=0" "spoofVendingFinger=$_svf" "spoofBuild=1" "spoofProps=1" "spoofSignature=0" "spoofVendingSdk=0"; do
         _k=${_kv%%=*}; _v=${_kv#*=}
-        _o=$(sed -n "s/^$_k=//p" "$CONFIG_DIR/spoof.conf" 2>/dev/null | head -1 | tr -d ' \t\r')
+        _o=$(sed -n "s/^$_k=//p" "$AS_SPOOF" 2>/dev/null | head -1 | tr -d ' \t\r')
         [ -n "$_o" ] && _v="$_o"
         if grep -q "^$_k=" "$SRC"; then $SED_I "s|^$_k=.*|$_k=$_v|" "$SRC"; else echo "$_k=$_v" >> "$SRC"; fi
     done
@@ -90,13 +91,13 @@ else
     # inject-s owns its own flags via its own WebUI. Don't enforce a default set —
     # only push the flags the user explicitly changed in OUR Advanced tab (each lands
     # in spoof.conf) onto its prop, leaving everything else exactly as inject-s set it.
-    if [ -s "$CONFIG_DIR/spoof.conf" ]; then
+    if [ -s "$AS_SPOOF" ]; then
         while IFS='=' read -r _k _v || [ -n "$_k" ]; do
             case "$_k" in ''|'#'*|*[!A-Za-z0-9_]*) continue ;; esac
             _v=$(printf '%s' "$_v" | tr -d ' \t\r')
             [ -n "$_v" ] || continue
             if grep -q "^$_k=" "$SRC"; then $SED_I "s|^$_k=.*|$_k=$_v|" "$SRC"; else echo "$_k=$_v" >> "$SRC"; fi
-        done < "$CONFIG_DIR/spoof.conf"
+        done < "$AS_SPOOF"
     fi
 fi
 

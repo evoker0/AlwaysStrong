@@ -9,6 +9,8 @@ cd "$MODDIR"
 unset ASH_STANDALONE
 
 [ -f "$MODDIR/common_func.sh" ] && . "$MODDIR/common_func.sh"
+# Settings, state and logs: one directory, one key=value file (see as_store.sh).
+[ -f "$MODDIR/as_store.sh" ] && . "$MODDIR/as_store.sh"
 
 # --- Play Integrity engine adapter ---
 # Which prop file the zygisk reads, and what its spoof flags are called, is all
@@ -126,8 +128,8 @@ done
 # dropping it costs the user a real feature for no integrity gain. Preserve by
 # default; only delete when the user opts into aggressive marker hiding. See
 # issue #7.
-#   Opt-in:  touch /data/adb/tricky_store/hide_rom_markers
-[ -f "$CONFIG_DIR/hide_rom_markers" ] && \
+#   Opt-in:  hide_rom_markers=1 in alwaysstrong/config
+as_on hide_rom_markers && \
     resetprop --delete init.svc.vendor.lineage_health 2>/dev/null
 }&
 
@@ -193,7 +195,6 @@ fi
 # Runs after the TEE/aswatcher daemons are up. All three degrade quietly if
 # their prerequisites are missing (no pif yet, SELinux blocks /proc writes).
 {
-    CFG=/data/adb/tricky_store
     sleep 8   # let supervisor/daemon/aswatcher come up first
 
     # NOTE: prop_unify.sh (global resetprop of ro.product.*) ships but is
@@ -203,7 +204,7 @@ fi
     # "Pixel 10" in scrcpy/ADB. It stays in the tree for manual use only.
 
     # Suppress our log tags + scrub ANR/tombstone traces (self-daemonizes).
-    if [ ! -f "$CFG/no_logcat_cleanup" ] && [ -f "$MODDIR/logcat_cleanup.sh" ]; then
+    if as_on logcat_cleanup && [ -f "$MODDIR/logcat_cleanup.sh" ]; then
         MODPATH="$MODDIR" sh "$MODDIR/logcat_cleanup.sh" >/dev/null 2>&1 &
     fi
 } &
@@ -301,9 +302,9 @@ if [ ! -f "$MODDIR/.bootstrapped" ]; then
         [ -x "$bb" ] && BB="$bb" && break
     done
     if [ -n "$BB" ]; then
-        AS_FAST=1 "$BB" sh "$MODDIR/action.sh" >/data/adb/tricky_store/.action_boot.log 2>&1
+        AS_FAST=1 "$BB" sh "$MODDIR/action.sh" >"$AS_LOGS/action-boot.log" 2>&1
     else
-        AS_FAST=1 sh "$MODDIR/action.sh" >/data/adb/tricky_store/.action_boot.log 2>&1
+        AS_FAST=1 sh "$MODDIR/action.sh" >"$AS_LOGS/action-boot.log" 2>&1
     fi
 
     touch "$MODDIR/.bootstrapped"
@@ -324,29 +325,23 @@ if grep -q '^ENGINE=none' "$MODDIR/engine.sh" 2>/dev/null; then
 fi
 
 # --- Hourly refresh (fingerprint + keybox, each toggle-able from WebUI) --
-# WebUI writes flag files into /data/adb/tricky_store/ to opt OUT:
-#   no_auto_fp      -> skip the fingerprint refresh
-#   no_auto_keybox  -> skip the keybox fetch
+# The WebUI writes the switches into alwaysstrong/config:
+#   auto_fp=0      -> skip the fingerprint refresh
+#   auto_keybox=0  -> skip the keybox fetch
 # Keybox-only restarts PI when it actually changed (exit 0); fingerprint
 # updates are picked up naturally on the next PI invocation, so we don't
 # kick running banking apps for cosmetic refreshes.
 {
-    CFG=/data/adb/tricky_store
     export MODPATH="$MODDIR"
     while true; do
         # Interval is user-configurable from the WebUI. Default 1h, floor 60s
-        # so a misconfigured 0/-1/garbage doesn't busy-spin the loop.
-        INT=$(cat "$CFG/hourly_interval_sec" 2>/dev/null)
-        case "$INT" in
-            ''|*[!0-9]*) INT=3600 ;;
-        esac
-        [ "$INT" -lt 60 ] && INT=60
-        sleep "$INT"
-        if [ ! -f "$CFG/no_auto_fp" ] && [ "${ENGINE:-none}" != "none" ]; then
+        # so a misconfigured 0/-1/garbage can't busy-spin the loop (as_int clamps).
+        sleep "$(as_int interval_sec 60)"
+        if as_on auto_fp && [ "${ENGINE:-none}" != "none" ]; then
             FP_DONE=0
             if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
-                sh "$MODDIR/pif_native_fetch.sh" >"$CFG/autopif.log" 2>&1 && FP_DONE=1
-                cat "$CFG/autopif.log" 2>/dev/null | log -t "AlwaysStrong-hourly"
+                sh "$MODDIR/pif_native_fetch.sh" >"$AS_LOGS/autopif.log" 2>&1 && FP_DONE=1
+                cat "$AS_LOGS/autopif.log" 2>/dev/null | log -t "AlwaysStrong-hourly"
             fi
             if [ "$FP_DONE" = 0 ]; then
                 engine_autopif 2>&1 | log -t "AlwaysStrong-hourly"
@@ -356,14 +351,14 @@ fi
             # migrate.sh writes spoofProvider=1 / spoofVendingFinger=0), which
             # would silently drop the verdict an hour after boot.
             engine_enforce_spoof
-        elif [ "${ENGINE:-none}" = "none" ] && [ ! -f "$CFG/no_auto_fp" ]; then
+        elif [ "${ENGINE:-none}" = "none" ] && as_on auto_fp; then
             # Lite line: no bundled engine to autopif, but if the user runs their
             # own standalone PlayIntegrityFork, mirror its fingerprint into the
             # attested identity and re-assert the STRONG spoof flags it keeps
             # resetting (spoofVendingFinger 1 -> 0). No-op with no PIF present.
             sh "$MODDIR/lite_pif_sync.sh" 2>&1 | log -t "AlwaysStrong-hourly"
         fi
-        if [ ! -f "$CFG/custom_keybox" ] && [ ! -f "$CFG/no_auto_keybox" ] && [ -x "$MODDIR/keybox_fetch.sh" ]; then
+        if ! as_on custom_keybox && as_on auto_keybox && [ -x "$MODDIR/keybox_fetch.sh" ]; then
             kbout=$(sh "$MODDIR/keybox_fetch.sh" 2>&1)
             kbrc=$?
             [ -n "$kbout" ] && echo "$kbout" | log -t "AlwaysStrong-hourly"

@@ -8,7 +8,7 @@
 # mismatch against the spoofed fingerprint. This closes that cross-validation
 # gap by resetprop-ing the product family to match the active pif fingerprint.
 #
-# Opt out: touch /data/adb/tricky_store/no_prop_unify
+# Opt out: prop_unify=0 in alwaysstrong/config
 
 MODDIR="${MODPATH:-$(dirname "$0")}"
 CFG=/data/adb/tricky_store

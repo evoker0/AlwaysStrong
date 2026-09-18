@@ -19,6 +19,7 @@ case "$0" in
 esac
 [ -z "$MODPATH" ] && MODPATH="$PWD"
 CONFIG_DIR=/data/adb/tricky_store
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 MODE="${1:-}"
 
 # --- find the dotted patch (YYYY-MM-DD) from a pif file -------------------
@@ -92,11 +93,11 @@ done
 #     old date, and after an OTA that outruns the fingerprint the real value
 #     stays.
 #   - opt-out for users who want Settings to show the untouched date:
-#       touch /data/adb/tricky_store/no_spoof_patch_props
+#       spoof_patch_props=0 in alwaysstrong/config
 #     (the old opt-in file spoof_patch_props still forces it on).
-if [ "$MODE" = "boot" ] && [ ! -f "$CONFIG_DIR/no_spoof_patch_props" ] && \
+if [ "$MODE" = "boot" ] && as_on spoof_patch_props && \
    command -v resetprop >/dev/null 2>&1; then
-    FORCE=0; [ -f "$CONFIG_DIR/spoof_patch_props" ] && FORCE=1
+    FORCE=0; as_on force_patch_props && FORCE=1
     for p in ro.build.version.security_patch \
              ro.vendor.build.security_patch \
              ro.system.build.version.security_patch; do

@@ -88,7 +88,7 @@ install_file "engine.sh" "$MODPATH"
 . "$MODPATH/engine.sh"
 
 for f in module.prop service.sh post-fs-data.sh action.sh \
-         uninstall.sh common_func.sh sepolicy.rule \
+         uninstall.sh common_func.sh as_store.sh sepolicy.rule \
          keybox_fetch.sh build_target_txt.sh status_fetch.sh description.txt \
          rom_spoof_block.sh conflict_scan.sh sync_patch.sh \
          pif_native_fetch.sh prop_unify.sh logcat_cleanup.sh collect_logs.sh \
@@ -193,6 +193,14 @@ fi
 
 # --- /data/adb/tricky_store config ----------------------------------------
 mkdir -p "$CONFIG_DIR"
+
+# Everything of OURS (settings, state, logs) goes under one directory there;
+# import it now so an upgrade from the old one-file-per-toggle layout keeps
+# every setting, instead of silently reverting to defaults on first boot.
+if [ -f "$MODPATH/as_store.sh" ]; then
+  MODPATH="$MODPATH" sh "$MODPATH/as_store.sh" migrate 2>/dev/null
+  ui_print "settings: $CONFIG_DIR/alwaysstrong/"
+fi
 if [ -f "$CONFIG_DIR/keybox.xml" ]; then
   ui_print "keybox kept ($(wc -c < "$CONFIG_DIR/keybox.xml") bytes)"
 else

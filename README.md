@@ -118,9 +118,10 @@ The same refresh also runs on its own in the background every hour (interval con
 
 ## Configuration
 
-All config files live at `/data/adb/tricky_store/` and are reloaded automatically when changed. The Action button keeps them current, so most users never need to touch these.
+Everything lives at `/data/adb/tricky_store/` and is reloaded automatically when changed. The Action button keeps it current, so most users never need to touch any of it.
 
 - **`keybox.xml`** — the attestation keybox, fetched automatically on the first Action tap. To use your own, switch on *Custom keybox* in the WebUI (or place the file here) and it won't be overwritten. To point the auto-refresh at a different mirror, set `KEYBOX_BASE_URL` for `keybox_fetch.sh`; the script validates the payload before replacing the current file.
+- **`alwaysstrong/`** — everything the module itself keeps, in one directory beside the engine's files: `config` (every setting the WebUI writes, one `key=value` line each — `auto_fp=0`, `interval_sec=1800`), `apps.map` (per-app keybox and mode), `packages`, `state`, `logs/`. Editing `config` by hand works, and deleting it puts every setting back to default. Upgrades import the old layout, where each switch was its own marker file (`no_auto_fp`, `hourly_interval_sec`, ...), and clear those away.
 
 ## Building
 

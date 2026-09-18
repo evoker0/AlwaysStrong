@@ -19,6 +19,9 @@ killall -9 com.google.android.gms.unstable 2>/dev/null
 killall -9 com.google.android.gms 2>/dev/null
 am force-stop com.android.vending 2>/dev/null
 
+# Our settings, state and logs (one directory since 1.0.5)
+rm -rf "$CONFIG_DIR/alwaysstrong"
+
 # Wipe TEESimulator runtime state
 rm -rf "$CONFIG_DIR/persistent_keys"
 rm -f "$CONFIG_DIR/tee_status.txt"

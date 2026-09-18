@@ -936,20 +936,25 @@ document.querySelectorAll("a[data-ext]").forEach(a=>{
 });
 
 const CFG="/data/adb/tricky_store";
-const FP_FLAG=CFG+"/no_auto_fp";
-const KB_FLAG=CFG+"/no_auto_keybox";
-const IND_FLAG=CFG+"/no_auto_indicator";
-const RS_FLAG=CFG+"/no_rom_spoof_block";
-// Security-patch prop spoof (sync_patch.sh boot): ON by default so
-// Build.VERSION.SECURITY_PATCH matches the attested osPatchLevel (attestation
-// checkers flag a mismatch). OFF writes this opt-out file; the real date comes
-// back on the next boot.
-const SPP_FLAG=CFG+"/no_spoof_patch_props";
-const CK_FLAG=CFG+"/custom_keybox";
 const KEYBOX=CFG+"/keybox.xml";
-const INT_FILE=CFG+"/hourly_interval_sec";
-const KBNAME=CFG+"/.custom_keybox_name";
 const MOD="/data/adb/modules/tricky_store";
+// Everything WE store sits in one directory next to the engine's own files, and
+// every switch is one line in one key=value file — no marker file per toggle.
+// as_store.sh owns the format; the page only ever reads `config` and calls it to
+// write. Setting names say what they DO: setting("auto_fp","0") turns the
+// fingerprint refresh off.
+// shell-quote; every command this page builds goes through it
+const shq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
+const AS=CFG+"/alwaysstrong";
+const AS_CONF=AS+"/config";
+const STORE=MOD+"/as_store.sh";
+const setting=(k,v)=>ksuExec(`sh ${shq(STORE)} set ${shq(k)} ${shq(String(v))}`);
+const settingOn=(k,on)=>setting(k,on?1:0);
+// Defaults, so the page paints the same thing as_store.sh would answer for a
+// key that was never written.
+const AS_DEFAULTS={auto_fp:"1",auto_keybox:"1",status_indicator:"1",rom_spoof_block:"1",
+                   spoof_patch_props:"1",custom_keybox:"0",interval_sec:"3600"};
+const conf=(S,k)=>(S[k]!==undefined&&S[k]!=="") ? S[k] : AS_DEFAULTS[k];
 const KEY_HOST="http://evoker.qzz.io";
 
 // Everything the first paint needs, in ONE root shell. Each ksu.exec spawns a
@@ -962,10 +967,9 @@ async function readAll(){
     `echo "eng=$(grep -m1 '^ENGINE=' "${MOD}/engine.sh" 2>/dev/null | cut -d= -f2-)"`,
     `echo "att=$(grep -m1 '^ATTEST=' "${MOD}/attest.sh" 2>/dev/null | cut -d= -f2-)"`,
     `echo "desc=$(grep -m1 '^description=' "${MOD}/module.prop" 2>/dev/null | sed -e 's/^description=//' | awk '{print $1}')"`,
-    `for f in no_auto_fp no_auto_keybox no_auto_indicator no_rom_spoof_block no_spoof_patch_props custom_keybox; do [ -f "${CFG}/$f" ] && echo "$f=1" || echo "$f=0"; done`,
-    `echo "int=$(cat "${INT_FILE}" 2>/dev/null)"`,
+    `cat "${AS_CONF}" 2>/dev/null`,
     `[ -s "${KEYBOX}" ] && echo "kb=$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "kb=0|"`,
-    `echo "kbname=$(cat "${KBNAME}" 2>/dev/null)"`,
+    `echo "keybox_name=$(sed -n 's/^keybox_name=//p' "${AS}/state" 2>/dev/null | head -1)"`,
     `echo "--spoof--"`,
     `for f in "${MOD}/custom.pif.prop" "${CFG}/custom.pif.prop" "${MOD}/pif.prop" "${CFG}/pif.prop"; do [ -s "$f" ] && grep -qiE '^(spoof|DEBUG)' "$f" && { grep -iE '^(spoof|DEBUG)' "$f"; break; }; done`
   ].join("; ");
@@ -999,7 +1003,7 @@ if(logBtn){
     toast(T.logs_run||"Collecting…",0);
     // launch detached so the collection (network probes, logcat) never blocks
     // the UI, then poll the pointer file it writes when done.
-    const start=await ksuExec(`rm -f ${CFG}/.last_log; (sh ${MOD}/collect_logs.sh >/dev/null 2>&1 &) ; echo ok`);
+    const start=await ksuExec(`sh ${shq(STORE)} state-del last_log; (sh ${MOD}/collect_logs.sh >/dev/null 2>&1 &) ; echo ok`);
     if(start.errno!==0){
       toast(T.logs_fail||"Failed — run via root shell",5000);
       delete logBtn.dataset.busy; return;
@@ -1009,7 +1013,7 @@ if(logBtn){
     // section alone can take ~60s (2 pings + DNS + 4 downloaders, each capped).
     for(let i=0;i<90;i++){            // up to ~90s
       await sleep(1000);
-      const r=await ksuExec(`cat ${CFG}/.last_log 2>/dev/null`);
+      const r=await ksuExec(`sh ${shq(STORE)} state-get last_log`);
       path=(r.stdout||"").trim();
       if(path) break;
     }
@@ -1029,10 +1033,6 @@ async function fetchMetaName(){
   metaKeyName = m ? m[1] : "";
 }
 
-// flag absent = feature enabled (the initial values come from readAll())
-async function writeEnabled(path,on){
-  await ksuExec(on?`rm -f "${path}"`:`mkdir -p "${CFG}" && touch "${path}"`);
-}
 
 // pre: the description prefix already read by readAll() — skip the shell then.
 async function loadStatus(pre){
@@ -1066,7 +1066,6 @@ const ckPick=document.getElementById("ckPick");
 const ckDel=document.getElementById("ckDel");
 const kbRow=kb.closest(".row");
 
-const shq=s=>"'"+String(s).replace(/'/g,"'\\''")+"'";
 const fmtDate=sec=>{ if(!sec) return ""; const d=new Date(sec*1000),p=n=>String(n).padStart(2,"0");
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); };
 const fmtSize=b=> b>=1048576?(b/1048576).toFixed(1)+" MB": b>=1024?(b/1024).toFixed(1)+" KB": b+" B";
@@ -1076,7 +1075,7 @@ const fmtSize=b=> b>=1048576?(b/1048576).toFixed(1)+" MB": b>=1024?(b/1024).toFi
 // Flipping a toggle writes a per-key override into spoof.conf and re-enforces,
 // so it survives the hourly re-apply. The STRONG defaults live in engine.sh;
 // only flip one if a specific app needs it (e.g. spoofProps off for a wallet).
-const SPOOF_CONF=CFG+"/spoof.conf";
+const SPOOF_CONF=AS+"/spoof.conf";
 const PIF_DIR="/data/adb/modules/playintegrityfix";   // a standalone PlayIntegrityFork
 const spoofVarsEl=document.getElementById("spoofVars");
 let spoofStyle="num"; // "num" (1/0, Fork) | "bool" (true/false, inject-s)
@@ -1136,10 +1135,10 @@ spoofVarsEl.addEventListener("change",async e=>{
     // Lite: persist the choice as a spoof.conf override (this survives the
     // standalone PIF's autopif, which keeps resetting its custom.pif.prop), then
     // lite_pif_sync re-asserts it onto the PIF's prop and restarts the PIF.
-    await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/lite_pif_sync.sh" >/dev/null 2>&1`);
+    await ksuExec(`mkdir -p "${AS}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/lite_pif_sync.sh" >/dev/null 2>&1`);
   } else {
     // fork/inject: per-key override in spoof.conf, then re-enforce on the bundled PIF.
-    await ksuExec(`mkdir -p "${CFG}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/reapply_spoof.sh" >/dev/null 2>&1`);
+    await ksuExec(`mkdir -p "${AS}"; f="${SPOOF_CONF}"; touch "$f"; grep -v "^${k}=" "$f" 2>/dev/null > "$f.tmp"; mv "$f.tmp" "$f"; printf '%s=%s\\n' "${k}" "${val}" >> "$f"; sh "${MOD}/reapply_spoof.sh" >/dev/null 2>&1`);
   }
   toast(T.applied||"Applied — restarting Play Integrity",2500);
 });
@@ -1159,7 +1158,7 @@ function ckSetState(kbField,nm){
   ckState.bytes=parseInt(t[0],10)||0; ckState.mtime=parseInt(t[1],10)||0; ckState.nm=(nm||"").trim();
 }
 async function ckRefresh(){
-  const r=await ksuExec(`{ [ -s "${KEYBOX}" ] && echo "$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "0|"; } ; echo "@$(cat "${KBNAME}" 2>/dev/null)"`);
+  const r=await ksuExec(`{ [ -s "${KEYBOX}" ] && echo "$(wc -c < "${KEYBOX}")|$(stat -c %Y "${KEYBOX}" 2>/dev/null)" || echo "0|"; } ; echo "@$(sh ${shq(STORE)} state-get keybox_name)"`);
   const out=(r.stdout||"").split("\n");
   ckSetState(out[0], (out[1]||"").replace(/^@/,""));
   ckRender();
@@ -1207,20 +1206,19 @@ function paintState(S){
     document.getElementById("variant").textContent=parts.join(" · ");
   }
   loadStatus(S.desc||"");
-  // flag file absent = feature enabled
-  fp.checked=S.no_auto_fp!=="1";
-  kb.checked=S.no_auto_keybox!=="1";
-  ind.checked=S.no_auto_indicator!=="1";
-  rs.checked=S.no_rom_spoof_block!=="1";
-  spp.checked=S.no_spoof_patch_props!=="1";
+  fp.checked=conf(S,"auto_fp")==="1";
+  kb.checked=conf(S,"auto_keybox")==="1";
+  ind.checked=conf(S,"status_indicator")==="1";
+  rs.checked=conf(S,"rom_spoof_block")==="1";
+  spp.checked=conf(S,"spoof_patch_props")==="1";
   // fork / inject builds fetch a fingerprint — show the toggle (hidden in the HTML;
   // Lite keeps it hidden, a standalone PIF owns the fingerprint there)
   if(S.eng && S.eng!=="none") document.getElementById("fpRow").hidden=false;
-  const curSec=parseInt(S.int||"",10);
+  const curSec=parseInt(conf(S,"interval_sec"),10);
   intInp.value=Number.isFinite(curSec)&&curSec>=60 ? Math.round(curSec/60) : 60;
-  ck.checked=S.custom_keybox==="1";
+  ck.checked=conf(S,"custom_keybox")==="1";
   ckSetEnabled(ck.checked);
-  ckSetState(S.kb,S.kbname);
+  ckSetState(S.kb,S.keybox_name);
   ckRender();
   // bundled-PIF builds: the spoof card straight from the prop lines in the state
   if(S.eng && S.eng!=="none") loadSpoofVars(S.spoof||[]).then(renderSpoofVars);
@@ -1228,12 +1226,12 @@ function paintState(S){
 
 async function init(){
   // ---- wire the simple controls first: they only write, nothing needs the state ----
-  fp.addEventListener("change",e=>writeEnabled(FP_FLAG,e.target.checked));
-  kb.addEventListener("change",e=>writeEnabled(KB_FLAG,e.target.checked));
+  fp.addEventListener("change",e=>settingOn("auto_fp",e.target.checked));
+  kb.addEventListener("change",e=>settingOn("auto_keybox",e.target.checked));
   ind.addEventListener("change",async e=>{
     if(ind.dataset.busy) return;
     ind.dataset.busy="1";
-    await writeEnabled(IND_FLAG,e.target.checked);
+    await settingOn("status_indicator",e.target.checked);
     if(!e.target.checked){
       // Off → status_fetch strips description= back to the clean base text.
       await ksuExec(`sh "${MOD}/status_fetch.sh" strip`);
@@ -1252,22 +1250,22 @@ async function init(){
     }
     delete ind.dataset.busy;
   });
-  rs.addEventListener("change",e=>writeEnabled(RS_FLAG,e.target.checked));
+  rs.addEventListener("change",e=>settingOn("rom_spoof_block",e.target.checked));
   spp.addEventListener("change",async e=>{
-    await writeEnabled(SPP_FLAG,e.target.checked);
+    await settingOn("spoof_patch_props",e.target.checked);
     // On → pin the props right away (same call boot makes). Off → the untouched
     // value is only known to init, so it returns on the next boot.
     if(e.target.checked) await ksuExec(`sh "${MOD}/sync_patch.sh" boot >/dev/null 2>&1`);
   });
   ck.addEventListener("change",async e=>{
-    await ksuExec(e.target.checked?`mkdir -p "${CFG}" && touch "${CK_FLAG}"`:`rm -f "${CK_FLAG}"`);
+    await settingOn("custom_keybox",e.target.checked);
     ckSetEnabled(e.target.checked);
   });
   const saveInterval=async()=>{
     let m=parseInt(intInp.value,10);
     if(!Number.isFinite(m)||m<1) m=60;
     intInp.value=m;
-    await ksuExec(`mkdir -p "${CFG}" && echo ${m*60} > "${INT_FILE}"`);
+    await setting("interval_sec",m*60);
   };
   intInp.addEventListener("blur",saveInterval);
   intInp.addEventListener("keydown",e=>{ if(e.key==="Enter") e.target.blur(); });
@@ -1421,15 +1419,15 @@ async function init(){
     if(fmMode==="import"){
       let fn=name.replace(/[^A-Za-z0-9._-]/g,"_"); if(!/\.xml$/i.test(fn)) fn+=".xml";
       if(fn.toLowerCase()==="keybox.xml") fn="imported_"+fn;
-      // Record it in .imported_keyboxes so build_target_txt.sh can GC it once
+      // Record it in alwaysstrong/imported so build_target_txt.sh can GC it once
       // no app references it anymore (manual keyboxes are never listed here, so
       // they're never auto-deleted).
-      const MAN=CFG+"/.imported_keyboxes";
+      const MAN=AS+"/imported";
       await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(CFG+"/"+fn)+" && chmod 600 "+shq(CFG+"/"+fn)
         +" && ( grep -qxF "+shq(fn)+" "+shq(MAN)+" 2>/dev/null || printf '%s\\n' "+shq(fn)+" >> "+shq(MAN)+" )");
       fmClose(); const cb=fmImportCb; fmImportCb=null; if(cb) cb(fn); return;
     }
-    await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(KEYBOX)+" && chmod 600 "+shq(KEYBOX)+" && printf '%s' "+shq(name)+" > "+shq(KBNAME));
+    await ksuExec("mkdir -p "+shq(CFG)+" && cp -f "+shq(path)+" "+shq(KEYBOX)+" && chmod 600 "+shq(KEYBOX)+" && sh "+shq(STORE)+" state-set keybox_name "+shq(name));
     fmClose(); await ckRefresh();
   }
   async function fmOpen(mode){
@@ -1483,17 +1481,17 @@ async function init(){
       toast(T.rst_fail||"Reset failed — run reset_defaults.sh via root shell",3500);
     }
   });
-  ckDel.addEventListener("click",async ()=>{ await ksuExec(`rm -f "${KEYBOX}" "${KBNAME}"`); await ckRefresh(); });
+  ckDel.addEventListener("click",async ()=>{ await ksuExec(`rm -f "${KEYBOX}"; sh ${shq(STORE)} state-del keybox_name`); await ckRefresh(); });
 
   // ---- per-app keybox + mode (Tricky-Addon-style app list) ----
   // map value grammar: "off" (untick) | "<kb>|<mode>" where kb is "-" (default
   // keybox.xml) or a filename, mode is "auto" | "gen" (!) | "hack" (?). No entry
   // = ticked, default keybox, auto (forced Google trio defaults to gen).
   (function pak(){
-    const MAP=CFG+"/app_keybox.map";
+    const MAP=AS+"/apps.map";
     // User-added packages (system apps not in `pm list -3` that still run an
     // integrity check). One package id per line; merged into the app list.
-    const CUSTOM_PKGS=CFG+"/custom_packages";
+    const CUSTOM_PKGS=AS+"/packages";
     const PLUS_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
     const isPkg=s=>/^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/.test(s);
     // "Unnecessary" apps — root managers, root tools and general apps that don't
@@ -1523,7 +1521,7 @@ async function init(){
     async function saveMap(){
       let body=""; Object.keys(map).sort().forEach(p=>{ if(map[p]) body+=p+"\t"+map[p]+"\n"; });
       // persist the map, then rebuild target.txt so TrickyStore reloads it now
-      await ksuExec(`mkdir -p ${shq(CFG)} && printf %s ${shq(body)} > ${shq(MAP)}; sh ${shq(MOD+"/build_target_txt.sh")} ${shq(CFG+"/target.txt")} >/dev/null 2>&1`);
+      await ksuExec(`mkdir -p ${shq(AS)} && printf %s ${shq(body)} > ${shq(MAP)}; sh ${shq(MOD+"/build_target_txt.sh")} ${shq(CFG+"/target.txt")} >/dev/null 2>&1`);
     }
     async function loadApps(){
       const r=await ksuExec(`{ pm list packages -3; echo com.google.android.gms; echo com.google.android.gsf; echo com.android.vending; cat ${shq(CUSTOM_PKGS)} 2>/dev/null; } 2>/dev/null | sed 's/^package://' | sort -u`);
@@ -1601,7 +1599,7 @@ async function init(){
     async function addCustomPkg(pkg){
       pkg=(pkg||"").trim();
       if(!isPkg(pkg)){ toast(T.pak_add_bad||"Enter a valid package name",3000); return; }
-      await ksuExec(`mkdir -p ${shq(CFG)} && ( grep -qxF ${shq(pkg)} ${shq(CUSTOM_PKGS)} 2>/dev/null || printf '%s\\n' ${shq(pkg)} >> ${shq(CUSTOM_PKGS)} )`);
+      await ksuExec(`mkdir -p ${shq(AS)} && ( grep -qxF ${shq(pkg)} ${shq(CUSTOM_PKGS)} 2>/dev/null || printf '%s\\n' ${shq(pkg)} >> ${shq(CUSTOM_PKGS)} )`);
       if(!apps.some(p=>p.toLowerCase()===pkg.toLowerCase())){ apps.push(pkg); apps.sort(); }
       delete map[pkg];              // ensure ticked (no "off" entry) = default keybox, auto
       appsSearch.value=""; render(); await saveMap();

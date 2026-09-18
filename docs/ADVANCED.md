@@ -131,6 +131,35 @@ directory, not a branch. `attest.sh` is the same seam for the keystore side.
 `version` / `versionCode` live only in `module/module.prop` — a line may not
 override them, so the builds can never disagree about which release they are.
 
+### On-device layout
+
+The keystore engine owns `/data/adb/tricky_store/` — `keybox.xml`, `target.txt`,
+`security_patch.txt`, `hbk`, `boot_*.bin`, `persistent_keys/`, `pif.prop`. Nothing
+of ours is mixed in with those any more; `module/as_store.sh` keeps it all in one
+directory beside them:
+
+```
+/data/adb/tricky_store/alwaysstrong/
+  config      every setting, one key=value line each   auto_fp=0 / interval_sec=1800
+  state       internal state (kb_engine, fp_idx, keybox_name, last_log)
+  apps.map    per-app keybox + mode  (WebUI "Target apps")
+  packages    user-added target packages
+  spoof.conf  spoof-flag overrides from the Advanced tab
+  imported    keyboxes imported through the WebUI, one file name per line
+  logs/       autopif.log, action-boot.log, action-reset.log
+  tmp/        downloads in flight, engine loop pids
+```
+
+A setting that is at its default is simply not in the file, so deleting `config`
+*is* "reset to defaults". Settings are named for what they do (`auto_fp=1` means
+the fingerprint refreshes itself) instead of the old marker files, which were
+named for what they switched off (`no_auto_fp` existing meant "don't"). Scripts
+read them through the helpers — `as_on auto_fp && ...`, `as_int interval_sec 60`,
+`st_get kb_engine` — and the WebUI calls the same file as a command
+(`sh as_store.sh set auto_fp 0`). Upgrades from the old layout are imported by
+`as_migrate` on install and on the first boot after it, which also clears the old
+files away.
+
 ### Native binaries
 
 `build.sh` packages the committed prebuilt binaries as they are unless a Rust

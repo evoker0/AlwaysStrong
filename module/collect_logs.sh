@@ -24,6 +24,7 @@ MODDIR=$(cd "${0%/*}" 2>/dev/null && pwd)
 # section isn't blank when someone runs the script from /sdcard or /tmp)
 [ -f "$MODDIR/module.prop" ] || MODDIR=/data/adb/modules/tricky_store
 CFG=/data/adb/tricky_store
+[ -f "$MODDIR/as_store.sh" ] && . "$MODDIR/as_store.sh"
 KEY_HOST="${KEYBOX_BASE_URL:-http://evoker.qzz.io}"
 
 # Timestamped filename so repeated collections don't overwrite each other. If
@@ -210,9 +211,9 @@ case "$ATTEST" in
         echo "teesim keybox -> $(readlink /data/adb/teesim/keybox.xml 2>/dev/null || echo 'NOT a symlink')"
         [ -f /data/adb/teesim/config.json ] && sed -E 's/"(serial|imei|imei2|meid)": *"[^"]*"/"\1": "<redacted>"/' /data/adb/teesim/config.json
         echo "gms uid (packages.list): $(sed -n 's/^com\.google\.android\.gms \([0-9]*\) .*/\1/p' /data/system/packages.list 2>/dev/null | head -1)"
-        L=$(cat "$CFG/.teesim_loop" 2>/dev/null); [ -n "$L" ] && echo "teesim loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
+        L=$(cat "$AS_TMP/teesim_loop.pid" 2>/dev/null); [ -n "$L" ] && echo "teesim loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
     trickystoreoss)
-        L=$(cat "$CFG/.ts_loop" 2>/dev/null); [ -n "$L" ] && echo "TSOSS loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
+        L=$(cat "$AS_TMP/ts_loop.pid" 2>/dev/null); [ -n "$L" ] && echo "TSOSS loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
 esac
 
 sec "Spoofed fingerprint (safe to share)"
@@ -228,13 +229,13 @@ for f in $(engine_pif_targets 2>/dev/null) "$CFG/pif.prop" /data/adb/pif.prop; d
     echo "$(sha < "$f" | cut -c1-12)  $(stat -c '%y %s' "$f" 2>/dev/null)  $f"
 done
 if [ -n "$ZP" ] && [ -s "$ZP" ]; then echo "--- $ZP"; cat "$ZP"; else echo "no fingerprint prop file present"; fi
-echo "--- spoof.conf (user overrides)"; if [ -s "$CFG/spoof.conf" ]; then cat "$CFG/spoof.conf"; else echo "none"; fi
+echo "--- spoof.conf (user overrides)"; if [ -s "$AS_SPOOF" ]; then cat "$AS_SPOOF"; else echo "none"; fi
 
 sec "Security patch coherence (DEVICE-but-not-STRONG cause #1)"
 echo "security_patch.txt: $(cat "$CFG/security_patch.txt" 2>/dev/null || echo MISSING)"
 echo "fingerprint SECURITY_PATCH: $([ -n "$ZP" ] && sed -n 's/^SECURITY_PATCH=//p' "$ZP" | head -1)"
 props ro.build.version.security_patch ro.vendor.build.security_patch ro.system.build.version.security_patch
-echo "spoof patch props: $([ -f "$CFG/no_spoof_patch_props" ] && echo 'OFF (user opt-out)' || echo on)"
+echo "spoof patch props: $(as_on spoof_patch_props && echo on || echo 'OFF (user opt-out)')"
 
 sec "Keybox (metadata only — contents withheld)"
 KB="$CFG/keybox.xml"
@@ -245,7 +246,7 @@ if [ -s "$KB" ]; then
     echo "sha256: $(sha < "$KB" | awk '{print $1}')"
     echo "looks-like-keybox: $(head -c 4096 "$KB" | grep -q Keybox && echo yes || echo NO)"
     echo "certs: $(grep -o '<Certificate' "$KB" | wc -l | tr -d " ")  privkeys: $(grep -o '<PrivateKey' "$KB" | wc -l | tr -d " ")  algos: $(grep -oE 'algorithm="[a-z]+"' "$KB" | sort -u | tr '\n' ' ') keyboxes: $(grep -oE '<NumberOfKeyboxes>[0-9]+' "$KB" | tr -dc '0-9')"
-    echo "custom-keybox mode: $([ -f "$CFG/custom_keybox" ] && echo on || echo off)"
+    echo "custom-keybox mode: $(as_on custom_keybox && echo on || echo off)"
     # The hash above is what tells a support reader whether this is the demo
     # keybox customize.sh seeds on a fresh install (compare with the one in the
     # module zip) or the fetched one — the Network section below shows whether
@@ -269,13 +270,14 @@ fi
 
 sec "Config dir"
 ls -la "$CFG" 2>/dev/null
-echo "--- WebUI flags (present = set)"
-for f in no_auto_fp no_auto_keybox no_auto_indicator no_rom_spoof_block no_spoof_patch_props \
-         spoof_patch_props custom_keybox hide_rom_markers no_logcat_cleanup no_prop_unify; do
-    [ -f "$CFG/$f" ] && echo "$f: ON"
-done
-echo "hourly_interval_sec: $(cat "$CFG/hourly_interval_sec" 2>/dev/null || echo 'default 3600')"
-echo "custom_packages: $(grep -cvE '^[[:space:]]*$' "$CFG/custom_packages" 2>/dev/null || echo 0)"
+echo "--- ours ($AS_DIR)"
+ls -la "$AS_DIR" 2>/dev/null
+echo "--- settings (effective value: stored, else default)"
+sh "$MODDIR/as_store.sh" dump 2>/dev/null
+echo "--- state"
+cat "$AS_STATE" 2>/dev/null || echo "none"
+echo "custom packages: $(grep -cvE '^[[:space:]]*$' "$AS_PKGS" 2>/dev/null || echo 0)"
+echo "per-app map entries: $(grep -cvE '^[[:space:]]*$' "$AS_APPS" 2>/dev/null || echo 0)"
 
 sec "Network (most keybox/fingerprint failures are here)"
 # raw IP reachability — no DNS involved
@@ -296,7 +298,7 @@ fi
 # actual keybox fetch, one attempt per engine, with timing — shows which
 # downloader works on this ROM and how long it takes. Each downloader's -T is
 # an IDLE timeout, so the outer cap is what keeps a dead route from hanging us.
-NT="$CFG/.netcheck.$$"; [ -d "$CFG" ] || NT="/data/local/tmp/.asnetcheck.$$"
+NT="$AS_TMP/netcheck.$$"; [ -d "$AS_TMP" ] || NT="/data/local/tmp/.asnetcheck.$$"
 mkdir -p "$NT"; trap 'rm -rf "$NT"' EXIT INT TERM
 test_engine() {
     _name="$1"; shift
@@ -315,18 +317,18 @@ KURL="$KEY_HOST/key"
 [ -n "$BB" ] && test_engine "busybox-wget" "$BB" wget -q -T 5 -O "$NT/out" "$KURL"
 command -v curl >/dev/null 2>&1 && test_engine "curl       " curl -fsSL --connect-timeout 5 --max-time 8 -o "$NT/out" "$KURL"
 command -v wget >/dev/null 2>&1 && test_engine "wget       " wget -q -T 5 -O "$NT/out" "$KURL"
-echo "last-good engine (cached): $(cat "$CFG/.kb_engine" 2>/dev/null || echo none)"
+echo "last-good engine (cached): $(st_get kb_engine || echo none)"
 rm -rf "$NT"; trap - EXIT INT TERM
 
 sec "Module logs on disk"
 # logcat_cleanup.sh silences our own logcat tags at the source
-# (persist.log.tag.AlwaysStrong*=S) unless no_logcat_cleanup exists, so the
+# (persist.log.tag.AlwaysStrong*=S) unless logcat_cleanup=0 is set, so the
 # logcat section below normally has NO AlwaysStrong lines by design — the
 # on-disk copies are where the boot / hourly / watchdog messages live.
 for t in AlwaysStrong AlwaysStrong-boot AlwaysStrong-hourly; do echo "persist.log.tag.$t=$(getprop "persist.log.tag.$t")"; done
-echo "--- autopif.log (fingerprint fetch)"; tail_or autopif.log "$CFG/autopif.log" 40
-echo "--- .action_boot.log (first-boot Action)"; tail_or action_boot.log "$CFG/.action_boot.log" 60
-echo "--- .action_reset.log (Reset to defaults)"; tail_or action_reset.log "$CFG/.action_reset.log" 40
+echo "--- autopif.log (fingerprint fetch)"; tail_or autopif.log "$AS_LOGS/autopif.log" 40
+echo "--- action-boot.log (first-boot Action)"; tail_or action-boot.log "$AS_LOGS/action-boot.log" 60
+echo "--- action-reset.log (Reset to defaults)"; tail_or action-reset.log "$AS_LOGS/action-reset.log" 40
 echo "--- module.log"; tail_or module.log "$MODDIR/logs/module.log" 60
 
 sec "SELinux denials / crashes around keystore"
@@ -352,5 +354,5 @@ echo "===== end ====="
 chmod 664 "$OUT" 2>/dev/null
 # leave a pointer to the newest log so the WebUI can launch this detached (no UI
 # freeze) and poll for the path instead of waiting on the whole run.
-echo "$OUT" > "$CFG/.last_log" 2>/dev/null
+st_set last_log "$OUT"
 echo "$OUT"

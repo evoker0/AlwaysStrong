@@ -17,6 +17,13 @@
 
 TGT="${1:-/data/adb/tricky_store/target.txt}"
 
+# Our own files (the per-app map, the import manifest) live in one directory
+# beside the engine's target.txt; as_store.sh names them. AS_CFG_ROOT follows
+# $TGT so a test run against a copy stays inside that copy.
+AS_CFG_ROOT="$(dirname "$TGT")"
+_asmd=$(cd "${0%/*}" 2>/dev/null && pwd); [ -f "$_asmd/as_store.sh" ] || _asmd=/data/adb/modules/tricky_store
+[ -f "$_asmd/as_store.sh" ] && . "$_asmd/as_store.sh"
+
 # Bail out early if pm is unreachable -- keep existing target.txt as-is.
 pm list packages >/dev/null 2>&1 || exit 1
 
@@ -77,7 +84,7 @@ DEF=$(build_default | sort -u)
 #                                   "gen" (generate the whole chain -> "!"), or
 #                                   "hack" (hack leaf cert -> "?").
 #   (no line)             -> ticked, default keybox, auto; forced trio -> gen.
-MAP="$(dirname "$TGT")/app_keybox.map"
+MAP="$AS_APPS"
 [ -f "$MAP" ] || MAP=""
 FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
 
@@ -119,15 +126,15 @@ FORCED="com.android.vending com.google.android.gms com.google.android.gsf"
 } > "${TGT}.tmp" && mv -f "${TGT}.tmp" "$TGT"
 
 # --- GC orphaned WebUI-imported keyboxes ---------------------------------
-# The WebUI records every keybox it imports into the config dir in
-# .imported_keyboxes (one filename per line). A file listed there that no map
+# The WebUI records every keybox it imports into alwaysstrong/imported (one
+# file name per line). A file listed there that no map
 # entry references anymore is a dead import — delete it so the config dir does
 # not accumulate stale keyboxes. ONLY files we imported are ever touched:
 # manually-dropped keyboxes are never in the manifest, so they are left alone.
 # keybox.xml (the default) is never a managed import and is skipped defensively.
 # If the map is gone entirely, every import is orphaned -> all get cleaned.
 CFG_DIR="$(dirname "$TGT")"
-MANIFEST="$CFG_DIR/.imported_keyboxes"
+MANIFEST="$AS_IMPORTED"
 if [ -f "$MANIFEST" ]; then
     # Keyboxes still referenced by a non-off map entry (kb field != "-").
     REFERENCED=""

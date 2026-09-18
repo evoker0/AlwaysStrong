@@ -29,7 +29,8 @@ attest_install() {
 # loop-pid marker so the early start and the watchdog don't stack parallel loops
 # (they would fight over the keystore2 injection).
 attest_start() {
-    _lk=/data/adb/tricky_store/.ts_loop
+    _lk=/data/adb/tricky_store/alwaysstrong/tmp/ts_loop.pid
+    mkdir -p "${_lk%/*}" 2>/dev/null
     if [ -f "$_lk" ] && kill -0 "$(cat "$_lk" 2>/dev/null)" 2>/dev/null; then
         return 0
     fi

@@ -45,6 +45,8 @@ if [ "$1" = "logs" ] && [ -x "$MODPATH/collect_logs.sh" ]; then
 fi
 
 CONFIG_DIR=/data/adb/tricky_store
+# Our own settings/state/logs (one directory, see as_store.sh).
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh" && as_init
 LINE="========================="
 VER=$(grep -m1 '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2-)
 
@@ -138,7 +140,7 @@ sleep 1
 # --- Step 2: Keybox ---
 # Custom-keybox mode (WebUI toggle): user supplied their own keybox, so we do
 # NOT fetch/overwrite it. Keep the note short.
-if [ -f "$CONFIG_DIR/custom_keybox" ]; then
+if as_on custom_keybox; then
     if [ -s "$CONFIG_DIR/keybox.xml" ] && head -c 4096 "$CONFIG_DIR/keybox.xml" | grep -q "Keybox"; then
         row "🔑" "custom keybox — skip fetch"
         row "💡" "disable in webui for auto"
@@ -229,7 +231,7 @@ apply_pif() { engine_install_pif "$1"; }
 row "🌐" "fetching fingerprint..."
 if [ -x "$MODPATH/pif_native_fetch.sh" ]; then
     bounded "$ENGINE_NATIVE_TIMEOUT" sh "$MODPATH/pif_native_fetch.sh" \
-        >"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
+        >"$AS_LOGS/autopif.log" 2>&1 && FP_OK=1
     [ "$FP_OK" = 1 ] && FP_SRC="native"
 fi
 
@@ -246,16 +248,15 @@ if [ "$FP_OK" = 0 ]; then
     MODPATH="$MODPATH" CONFIG_DIR="$CONFIG_DIR" SED_I="$SED_I" \
         bounded "$ENGINE_AUTOPIF_TIMEOUT" \
         sh -c '. "$MODPATH/engine.sh"; engine_autopif' \
-        >>"$CONFIG_DIR/autopif.log" 2>&1 && FP_OK=1
+        >>"$AS_LOGS/autopif.log" 2>&1 && FP_OK=1
     [ "$FP_OK" = 1 ] && FP_SRC="pif"
 
     # 3. shipped static props (alternate 2 each tap) — installed through the
     #    engine adapter like the fetched ones, so they land in the right file.
     if [ "$FP_OK" = 0 ]; then
-        IDX_FILE="$CONFIG_DIR/.fp_idx"
-        IDX=$(cat "$IDX_FILE" 2>/dev/null)
+        IDX=$(st_get fp_idx)
         if [ "$IDX" = "2" ]; then IDX=1; else IDX=2; fi
-        echo "$IDX" > "$IDX_FILE" 2>/dev/null
+        st_set fp_idx "$IDX"
 
         FB="$MODPATH/pif_fallback_${IDX}.prop"
         if [ -s "$FB" ] && grep -q "FINGERPRINT=" "$FB" && apply_pif "$FB"; then

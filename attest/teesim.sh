@@ -182,7 +182,8 @@ attest_install() {
 # would fight over the keystore2 injection). The App's argv[0] is the home dir
 # where its inject binary + native libs live ($MODDIR/teesim).
 attest_start() {
-    _lk=/data/adb/tricky_store/.teesim_loop
+    _lk=/data/adb/tricky_store/alwaysstrong/tmp/teesim_loop.pid
+    mkdir -p "${_lk%/*}" 2>/dev/null
     if [ -f "$_lk" ] && kill -0 "$(cat "$_lk" 2>/dev/null)" 2>/dev/null; then
         return 0
     fi

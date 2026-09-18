@@ -15,12 +15,12 @@ MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
 PROP="$MODPATH/module.prop"
 BASE_FILE="$MODPATH/description.txt"
 CONFIG_DIR=/data/adb/tricky_store
-NO_AUTO_FLAG="$CONFIG_DIR/no_auto_indicator"
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 TIMEOUT=10   # idle timeout per downloader; the outer cap per engine is CAP
 CAP=45
 
 # mode: "manual" (action button — always writes module.prop)
-#       "auto"   (service.sh hourly — skips write if NO_AUTO_FLAG present)
+#       "auto"   (service.sh hourly — skips the write when status_indicator=0)
 #       "strip"  (WebUI indicator OFF — rewrite description to base, no fetch)
 MODE="${1:-auto}"
 
@@ -48,7 +48,7 @@ fi
 # Auto path + user opted out of indicator → exit without touching module.prop.
 # Hourly fp/keybox checks still happen in service.sh; only the visible 🟢
 # prefix is gated. Manual action presses always update regardless.
-if [ "$MODE" != "manual" ] && [ -f "$NO_AUTO_FLAG" ]; then
+if [ "$MODE" != "manual" ] && ! as_on status_indicator; then
     exit 0
 fi
 

@@ -17,12 +17,14 @@ KEY_URL="$BASE_URL/key"
 
 CONFIG_DIR=/data/adb/tricky_store
 TARGET="$CONFIG_DIR/keybox.xml"
+MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 
 log() { echo "keybox_fetch: $*"; }
 
 # Custom-keybox mode: the user manages keybox.xml themselves via the WebUI —
 # never fetch or overwrite it. (Defensive; action.sh/service.sh also gate on this.)
-if [ -f "$CONFIG_DIR/custom_keybox" ]; then
+if as_on custom_keybox; then
     log "custom keybox active — skipping fetch."
     exit 2
 fi
@@ -88,16 +90,15 @@ run_engine() {
 }
 
 # try_fetch OUTFILE URL — try each engine until one returns a non-empty file.
-# The engine that last worked is remembered ($CONFIG_DIR/.kb_engine) and tried
-# first, so we don't burn a fetcher's full timeout on every call.
-CACHE="$CONFIG_DIR/.kb_engine"
+# The engine that last worked is remembered (kb_engine in alwaysstrong/state)
+# and tried first, so we don't burn a fetcher's full timeout on every call.
 try_fetch() {
     _o="$1"; _u="$2"
-    _first=$(cat "$CACHE" 2>/dev/null)
+    _first=$(st_get kb_engine)
     for _e in "$_first" asfetch bb curl wget; do
         [ -z "$_e" ] && continue
         if run_engine "$_e" "$_o" "$_u"; then
-            [ "$_e" != "$_first" ] && echo "$_e" > "$CACHE" 2>/dev/null
+            [ "$_e" != "$_first" ] && st_set kb_engine "$_e"
             return 0
         fi
     done
@@ -130,7 +131,7 @@ fi
 
 # ---- Fetch ----
 mkdir -p "$CONFIG_DIR"
-TMP="$CONFIG_DIR/.keybox_fetch.$$"
+TMP=$(as_tmp "keybox.$$")
 mkdir -p "$TMP"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 
@@ -169,9 +170,6 @@ fi
 # ---- Atomic replace ----
 mv -f "$TMP/keybox.xml" "$TARGET" || { log "mv to $TARGET failed."; exit 1; }
 chmod 600 "$TARGET"
-# Vestigial state file from older versions — clean up so it doesn't
-# confuse anyone debugging.
-rm -f "$CONFIG_DIR/.keybox.sha256" 2>/dev/null
 log "$TARGET updated ($(wc -c < "$TARGET") bytes)."
 
 # Tell the attestation engine the keybox changed. TEESimulator-RS and

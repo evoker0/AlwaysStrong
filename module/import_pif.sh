@@ -16,6 +16,7 @@ case "$0" in
 esac
 [ -z "$MODPATH" ] && MODPATH="$PWD"
 CONFIG_DIR=/data/adb/tricky_store
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 export MODPATH CONFIG_DIR
 
 SRC="$1"
@@ -24,7 +25,7 @@ SRC="$1"
 . "$MODPATH/engine.sh"
 
 mkdir -p "$CONFIG_DIR"
-TMP="$CONFIG_DIR/.import.pif.prop"
+TMP=$(as_tmp import.pif.prop)
 
 # JSON if the first non-space byte is '{', else treat as a prop file.
 FIRST=$(head -c 256 "$SRC" 2>/dev/null | tr -d ' \t\r\n' | cut -c1)

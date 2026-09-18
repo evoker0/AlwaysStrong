@@ -1,5 +1,9 @@
 MODPATH="${0%/*}"
 . $MODPATH/common_func.sh
+# Our settings/state/logs live in one directory (as_store.sh). This is the
+# earliest thing the module runs, so it is also where a pre-1.0.5 layout -
+# a loose marker file per toggle - gets imported and cleared away.
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh" && as_init && as_migrate
 
 # Our PIF zygisk binary is binary-patched at build time to read its dex/config
 # from /data/adb/modules/tricky_store (our module dir) instead of the upstream
@@ -76,8 +80,8 @@ resetprop_if_diff ro.secure 1
 # props — so deleting them device-wide buys almost no integrity while it breaks
 # the ROM-version display (shows "unknown"). Preserve them by default; only
 # scrub when the user opts in via the WebUI Advanced tab.
-#   Opt-in:  touch /data/adb/tricky_store/hide_rom_markers
-if [ -f /data/adb/tricky_store/hide_rom_markers ]; then
+#   Opt-in:  hide_rom_markers=1 in alwaysstrong/config (WebUI Advanced tab)
+if as_on hide_rom_markers; then
     for PROP in ro.lineage.build.version ro.lineage.version ro.lineage.display.version \
                 ro.modversion ro.cm.version \
                 ro.crdroid.version ro.crdroid.display.version ro.crdroid.build.version; do
@@ -86,7 +90,7 @@ if [ -f /data/adb/tricky_store/hide_rom_markers ]; then
 fi
 
 # Disable ROM-level spoof engines (PixelPropsUtils / pihooks / entryhooks)
-# before GMS starts. Gated by /data/adb/tricky_store/no_rom_spoof_block flag.
+# before GMS starts. Gated by rom_spoof_block in alwaysstrong/config.
 if [ -x "$MODPATH/rom_spoof_block.sh" ]; then
     sh "$MODPATH/rom_spoof_block.sh" 2>/dev/null || true
 fi

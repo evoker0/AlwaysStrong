@@ -13,7 +13,8 @@
 # down.
 #
 # Deliberately kept:
-#   keybox.xml, custom_keybox + the imported per-app keyboxes and their map
+#   keybox.xml, the custom-keybox switch + the imported per-app keyboxes and
+#     their map (alwaysstrong/apps.map)
 #     (user data, and the auto-fetch would overwrite a user's own keybox)
 #   hbk, security_patch.txt, pif files, target.txt (derived state; Action
 #     regenerates what needs regenerating)
@@ -24,15 +25,13 @@ case "$0" in
     *)   MODPATH="$PWD" ;;
 esac
 [ -f "$MODPATH/module.prop" ] || MODPATH=/data/adb/modules/tricky_store
-CFG=/data/adb/tricky_store
 
-# Opt-out flags (file present = feature off), the legacy force-on patch flag,
-# the interval, the Advanced spoof-flag overrides and the custom target packages.
-for f in no_auto_fp no_auto_keybox no_auto_indicator no_rom_spoof_block \
-         no_spoof_patch_props spoof_patch_props no_prop_unify hide_rom_markers \
-         hourly_interval_sec spoof.conf custom_packages; do
-    rm -f "$CFG/$f" 2>/dev/null
-done
+# Every setting lives in one key=value file, so a reset is one deletion: with
+# no config file present every setting reads its default again. The Advanced
+# tab's spoof-flag overrides and the user-added target packages go with it.
+CFG=/data/adb/tricky_store
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
+rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" 2>/dev/null
 
 # The status prefix is default-on again; the next status fetch writes it back.
 # Re-run the Action in the background, exactly like the first boot does: under
@@ -45,9 +44,9 @@ for bb in /data/adb/magisk/busybox /data/adb/ksu/bin/busybox /data/adb/ap/bin/bu
 done
 if [ -x "$MODPATH/action.sh" ] || [ -f "$MODPATH/action.sh" ]; then
     if [ -n "$BB" ]; then
-        AS_FAST=1 "$BB" sh "$MODPATH/action.sh" >"$CFG/.action_reset.log" 2>&1 &
+        AS_FAST=1 "$BB" sh "$MODPATH/action.sh" >"$AS_LOGS/action-reset.log" 2>&1 &
     else
-        AS_FAST=1 sh "$MODPATH/action.sh" >"$CFG/.action_reset.log" 2>&1 &
+        AS_FAST=1 sh "$MODPATH/action.sh" >"$AS_LOGS/action-reset.log" 2>&1 &
     fi
 fi
 

@@ -8,11 +8,13 @@
 # get flagged. We disable the ROM engines so AlwaysStrong is the single
 # source of truth for the spoofed fingerprint.
 #
-# Opt-out:  touch /data/adb/tricky_store/no_rom_spoof_block
+# Opt-out:  rom_spoof_block=0 in alwaysstrong/config (WebUI Advanced tab).
 # Called from post-fs-data.sh (early, before GMS starts).
 
 CONFIG_DIR=/data/adb/tricky_store
-[ -f "$CONFIG_DIR/no_rom_spoof_block" ] && exit 0
+MODPATH="${MODPATH:-${0%/*}}"
+[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
+as_on rom_spoof_block || exit 0
 
 GMS_PROPS_FILE="/data/system/gms_certified_props.json"
 
