@@ -47,6 +47,8 @@ fi
 CONFIG_DIR=/data/adb/tricky_store
 # Our own settings/state/logs (one directory, see as_store.sh).
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh" && as_init
+: "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
+mkdir -p "$AS_LOGS" 2>/dev/null
 LINE="========================="
 VER=$(grep -m1 '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2-)
 

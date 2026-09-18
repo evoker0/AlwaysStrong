@@ -50,6 +50,11 @@ as_init() {
     return 0
 }
 
+# Every setting there is, in the order the config file lists them.
+AS_KEYS="auto_fp auto_keybox status_indicator rom_spoof_block spoof_patch_props
+         force_patch_props logcat_cleanup prop_unify hide_rom_markers custom_keybox
+         interval_sec"
+
 # What a setting means when nothing has been written. Everything the module does
 # on its own is on; the two opt-ins are off.
 as_default() {
@@ -121,6 +126,23 @@ as_int() {
     [ "$_n" -lt "$_min" ] && _n=$_min
     echo "$_n"
     unset _n _min
+    return 0
+}
+
+# as_seed — write the whole set out, every key with its effective value. The
+# config file is meant to be read and edited by hand, so it lists every setting
+# rather than only the ones that differ from the default: install, first boot and
+# a reset each leave a complete file behind. Stored values are kept as they are,
+# and a key the file has never had (a setting a later version adds) shows up at
+# its default.
+as_seed() {
+    as_init
+    for _k in $AS_KEYS; do
+        printf '%s=%s
+' "$_k" "$(as_get "$_k")"
+    done > "$AS_CONF.new" 2>/dev/null && mv -f "$AS_CONF.new" "$AS_CONF" 2>/dev/null
+    chmod 600 "$AS_CONF" 2>/dev/null || :
+    unset _k
     return 0
 }
 
@@ -205,36 +227,42 @@ as_migrate() {
           "$_old/.ts_loop" "$_old/.teesim_loop" 2>/dev/null
     rm -f "$_old"/.keybox_fetch.* "$_old"/.pif_native.* "$_old"/.pif_asfetch.* \
           "$_old"/.netcheck.* 2>/dev/null
+    as_seed
     unset _old _m _f _s _l
     return 0
 }
 
 # --- command line ---------------------------------------------------------
-# Only when run, not when sourced: `sh as_store.sh <verb> ...`.
-case "${1:-}" in
-    get)        as_get "$2" "$3" ;;
-    set)        as_set "$2" "$3" ;;
-    del|unset)  as_del "$2" ;;
-    on)         as_on "$2" ;;                  # exit status: 0 = on
-    int)        as_int "$2" "$3" ;;
-    state-get)  st_get "$2" ;;
-    state-set)  st_set "$2" "$3" ;;
-    state-del)  st_del "$2" ;;
-    path)
-        case "$2" in
-            dir) echo "$AS_DIR" ;; config) echo "$AS_CONF" ;; state) echo "$AS_STATE" ;;
-            apps) echo "$AS_APPS" ;; packages) echo "$AS_PKGS" ;; spoof) echo "$AS_SPOOF" ;;
-            imported) echo "$AS_IMPORTED" ;; logs) echo "$AS_LOGS" ;; tmp) echo "$AS_TMP" ;;
-            *) echo "$AS_DIR" ;;
-        esac ;;
-    dump)
-        # every setting with its effective value — what the WebUI paints from,
-        # in one shell round trip
-        for _k in auto_fp auto_keybox status_indicator rom_spoof_block \
-                  spoof_patch_props force_patch_props logcat_cleanup prop_unify \
-                  hide_rom_markers custom_keybox interval_sec; do
-            echo "$_k=$(as_get "$_k")"
-        done ;;
-    migrate)    as_init; as_migrate ;;
-    init)       as_init ;;
-esac
+# The verbs run only when this file is RUN, never when it is sourced: a script
+# that sources it passes its own arguments along ("$1" is still the caller's),
+# so `sh status_fetch.sh manual` or `sh sync_patch.sh boot` would otherwise be
+# read as a verb here. Hence a function plus a $0 check, and no bare return /
+# exit, which would either error out or take the sourcing script down with it.
+as_cli() {
+    case "${1:-}" in
+        get)        as_get "$2" "$3" ;;
+        set)        as_set "$2" "$3" ;;
+        del|unset)  as_del "$2" ;;
+        on)         as_on "$2" ;;                  # exit status: 0 = on
+        int)        as_int "$2" "$3" ;;
+        state-get)  st_get "$2" ;;
+        state-set)  st_set "$2" "$3" ;;
+        state-del)  st_del "$2" ;;
+        path)
+            case "$2" in
+                dir) echo "$AS_DIR" ;; config) echo "$AS_CONF" ;; state) echo "$AS_STATE" ;;
+                apps) echo "$AS_APPS" ;; packages) echo "$AS_PKGS" ;; spoof) echo "$AS_SPOOF" ;;
+                imported) echo "$AS_IMPORTED" ;; logs) echo "$AS_LOGS" ;; tmp) echo "$AS_TMP" ;;
+                *) echo "$AS_DIR" ;;
+            esac ;;
+        dump)
+            # every setting with its effective value — what the WebUI paints
+            # from, in one shell round trip
+            for _k in $AS_KEYS; do echo "$_k=$(as_get "$_k")"; done ;;
+        migrate)    as_init; as_migrate; as_seed ;;
+        seed)       as_seed ;;
+        init)       as_init ;;
+    esac
+}
+
+case "$0" in *as_store.sh) as_cli "$@" ;; esac

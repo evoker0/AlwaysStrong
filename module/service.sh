@@ -11,6 +11,10 @@ unset ASH_STANDALONE
 [ -f "$MODDIR/common_func.sh" ] && . "$MODDIR/common_func.sh"
 # Settings, state and logs: one directory, one key=value file (see as_store.sh).
 [ -f "$MODDIR/as_store.sh" ] && . "$MODDIR/as_store.sh"
+# A redirect into an unset $AS_LOGS would write to the filesystem root, so the
+# path is pinned here even in the impossible case that the file is missing.
+: "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
+mkdir -p "$AS_LOGS" 2>/dev/null
 
 # --- Play Integrity engine adapter ---
 # Which prop file the zygisk reads, and what its spoof flags are called, is all

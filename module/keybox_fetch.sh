@@ -18,9 +18,18 @@ KEY_URL="$BASE_URL/key"
 CONFIG_DIR=/data/adb/tricky_store
 TARGET="$CONFIG_DIR/keybox.xml"
 MODPATH="${MODPATH:-/data/adb/modules/tricky_store}"
-[ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
 
 log() { echo "keybox_fetch: $*"; }
+
+# The custom-keybox switch lives in the store, and without it we cannot tell
+# whether the user manages keybox.xml themselves - guessing wrong overwrites
+# their file, so this fails closed rather than fetching blind.
+if [ -f "$MODPATH/as_store.sh" ]; then
+    . "$MODPATH/as_store.sh"
+else
+    log "as_store.sh missing - refusing to touch the keybox."
+    exit 1
+fi
 
 # Custom-keybox mode: the user manages keybox.xml themselves via the WebUI —
 # never fetch or overwrite it. (Defensive; action.sh/service.sh also gate on this.)

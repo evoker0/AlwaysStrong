@@ -26,12 +26,14 @@ case "$0" in
 esac
 [ -f "$MODPATH/module.prop" ] || MODPATH=/data/adb/modules/tricky_store
 
-# Every setting lives in one key=value file, so a reset is one deletion: with
-# no config file present every setting reads its default again. The Advanced
-# tab's spoof-flag overrides and the user-added target packages go with it.
-CFG=/data/adb/tricky_store
+# Every setting lives in one key=value file, so a reset is one rewrite: the file
+# is written out again with every setting at its default. The Advanced tab's
+# spoof-flag overrides and the user-added target packages go with it.
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh"
+: "${AS_LOGS:=/data/adb/tricky_store/alwaysstrong/logs}"
+mkdir -p "$AS_LOGS" 2>/dev/null
 rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" 2>/dev/null
+as_seed
 
 # The status prefix is default-on again; the next status fetch writes it back.
 # Re-run the Action in the background, exactly like the first boot does: under
