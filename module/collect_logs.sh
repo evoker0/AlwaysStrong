@@ -211,9 +211,9 @@ case "$ATTEST" in
         echo "teesim keybox -> $(readlink /data/adb/teesim/keybox.xml 2>/dev/null || echo 'NOT a symlink')"
         [ -f /data/adb/teesim/config.json ] && sed -E 's/"(serial|imei|imei2|meid)": *"[^"]*"/"\1": "<redacted>"/' /data/adb/teesim/config.json
         echo "gms uid (packages.list): $(sed -n 's/^com\.google\.android\.gms \([0-9]*\) .*/\1/p' /data/system/packages.list 2>/dev/null | head -1)"
-        L=$(cat "$AS_TMP/teesim_loop.pid" 2>/dev/null); [ -n "$L" ] && echo "teesim loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
+        L=$(st_get teesim_loop); [ -n "$L" ] && echo "teesim loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
     trickystoreoss)
-        L=$(cat "$AS_TMP/ts_loop.pid" 2>/dev/null); [ -n "$L" ] && echo "TSOSS loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
+        L=$(st_get ts_loop); [ -n "$L" ] && echo "TSOSS loop pid $L alive: $(kill -0 "$L" 2>/dev/null && echo yes || echo NO)" ;;
 esac
 
 sec "Spoofed fingerprint (safe to share)"

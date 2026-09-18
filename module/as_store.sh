@@ -10,13 +10,14 @@
 #
 #   /data/adb/tricky_store/alwaysstrong/
 #     config      user settings, key=value      (auto_fp=0, interval_sec=1800)
-#     state       internal state, key=value     (kb_engine=asfetch, fp_idx=2)
+#     state       internal state, key=value     (kb_engine=asfetch, fp_idx=2,
+#                 and the pids of the loops we run: refresh=, ts_loop=, ...)
 #     apps.map    per-app keybox + mode          (was app_keybox.map)
 #     packages    user-added target packages     (was custom_packages)
 #     spoof.conf  spoof-flag overrides from the Advanced tab
 #     imported    keyboxes imported from the WebUI, one file name per line
 #     logs/       autopif.log, action-boot.log, action-reset.log
-#     tmp/        downloads in flight, engine loop pids
+#     tmp/        downloads in flight, emptied on boot (usually empty)
 #
 # Anything new belongs in one of these as a LINE, not as another file: the
 # directory next door is the engine's and this one should stay readable.
@@ -278,7 +279,8 @@ as_migrate() {
           "$_old"/.netcheck.* 2>/dev/null
     # and from our own tmp/: the stamp an earlier build polled against, which
     # nothing reads now that the loop is told about a change instead
-    rm -f "$AS_TMP/interval.stamp" "$AS_TMP/refresh.pid" 2>/dev/null
+    rm -f "$AS_TMP/interval.stamp" "$AS_TMP/refresh.pid" \
+          "$AS_TMP/ts_loop.pid" "$AS_TMP/teesim_loop.pid" 2>/dev/null
     as_seed
     unset _old _m _f _s _l
     return 0

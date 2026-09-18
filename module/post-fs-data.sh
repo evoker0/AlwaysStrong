@@ -4,6 +4,12 @@ MODPATH="${0%/*}"
 # earliest thing the module runs, so it is also where a pre-1.0.5 layout -
 # a loose marker file per toggle - gets imported and cleared away.
 [ -f "$MODPATH/as_store.sh" ] && . "$MODPATH/as_store.sh" && as_init && as_migrate
+# scratch from before the reboot: a download killed mid-flight leaves its work
+# directory behind, and nothing else ever cleans it up. The loop pids in state
+# belong to processes that died with the last boot, and a line that outlives
+# the process it names only makes a log harder to read.
+[ -n "$AS_TMP" ] && rm -rf "$AS_TMP"/* 2>/dev/null
+command -v st_del >/dev/null 2>&1 && { st_del refresh; st_del ts_loop; st_del teesim_loop; }
 
 # Our PIF zygisk binary is binary-patched at build time to read its dex/config
 # from /data/adb/modules/tricky_store (our module dir) instead of the upstream

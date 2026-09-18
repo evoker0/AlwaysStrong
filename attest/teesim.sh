@@ -182,9 +182,11 @@ attest_install() {
 # would fight over the keystore2 injection). The App's argv[0] is the home dir
 # where its inject binary + native libs live ($MODDIR/teesim).
 attest_start() {
-    _lk=/data/adb/tricky_store/alwaysstrong/tmp/teesim_loop.pid
-    mkdir -p "${_lk%/*}" 2>/dev/null
-    if [ -f "$_lk" ] && kill -0 "$(cat "$_lk" 2>/dev/null)" 2>/dev/null; then
+    # The loop's pid is one line in alwaysstrong/state (teesim_loop=...), not a
+    # file of its own; service.sh has sourced as_store.sh before this runs, and
+    # without it the guard simply lets the loop start.
+    if command -v st_get >/dev/null 2>&1 &&
+       kill -0 "$(st_get teesim_loop)" 2>/dev/null; then
         return 0
     fi
     teesim_gen_config
@@ -195,7 +197,8 @@ attest_start() {
             --nice-name=teesim org.matrix.teesim.App "$_home" || break
         sleep 2
       done ) &
-    echo $! > "$_lk" 2>/dev/null
+    command -v st_set >/dev/null 2>&1 && st_set teesim_loop "$!"
+    return 0
 }
 
 # The App renames its own process to "TEESimulator" (overriding app_process's

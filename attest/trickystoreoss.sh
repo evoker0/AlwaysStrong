@@ -29,9 +29,11 @@ attest_install() {
 # loop-pid marker so the early start and the watchdog don't stack parallel loops
 # (they would fight over the keystore2 injection).
 attest_start() {
-    _lk=/data/adb/tricky_store/alwaysstrong/tmp/ts_loop.pid
-    mkdir -p "${_lk%/*}" 2>/dev/null
-    if [ -f "$_lk" ] && kill -0 "$(cat "$_lk" 2>/dev/null)" 2>/dev/null; then
+    # The loop's pid is one line in alwaysstrong/state (ts_loop=...), not a
+    # file of its own; service.sh has sourced as_store.sh before this runs, and
+    # without it the guard simply lets the loop start.
+    if command -v st_get >/dev/null 2>&1 &&
+       kill -0 "$(st_get ts_loop)" 2>/dev/null; then
         return 0
     fi
     ( cd "$MODDIR" || exit 1
@@ -39,7 +41,8 @@ attest_start() {
           ./daemon "$MODDIR" || break
           sleep 2
       done ) &
-    echo $! > "$_lk" 2>/dev/null
+    command -v st_set >/dev/null 2>&1 && st_set ts_loop "$!"
+    return 0
 }
 
 attest_alive() { pidof TrickyStoreOSS >/dev/null 2>&1; }

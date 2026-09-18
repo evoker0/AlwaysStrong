@@ -144,13 +144,14 @@ directory beside them:
 ```
 /data/adb/tricky_store/alwaysstrong/
   config      every setting, one key=value line each   auto_fp=0 / interval_sec=1800
-  state       internal state (kb_engine, fp_idx, keybox_name, last_log)
+  state       internal state (kb_engine, fp_idx, keybox_name, last_log, and the
+              pids of the loops the module runs)
   apps.map    per-app keybox + mode  (WebUI "Target apps")
   packages    user-added target packages
   spoof.conf  spoof-flag overrides from the Advanced tab
   imported    keyboxes imported through the WebUI, one file name per line
   logs/       autopif.log, action-boot.log, action-reset.log
-  tmp/        downloads in flight, engine loop pids
+  tmp/        downloads in flight, emptied on boot (usually empty)
 ```
 
 Editing `config` by hand works, but nothing watches the file — same as nginx,
@@ -159,6 +160,10 @@ where the daemon keeps the old config until `nginx -s reload`. Here that is
 refresh loop to drop its current wait and start the new interval now; without it
 a hand-edited interval takes effect on the next cycle. Every change made through
 the WebUI, the Action or `as_store.sh set` sends that signal by itself.
+
+Anything the module needs to remember goes into one of these files as a line;
+another file is not added for it, because the directory next door is the
+engine's and this one is meant to stay readable.
 
 A setting that is at its default is simply not in the file, so deleting `config`
 *is* "reset to defaults". Settings are named for what they do (`auto_fp=1` means
