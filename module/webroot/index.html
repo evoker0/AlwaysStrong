@@ -1686,25 +1686,36 @@ async function init(){
     };
     document.getElementById("pkgOk").addEventListener("click",pkgSubmit);
     pkgInput.addEventListener("keydown",e=>{ if(e.key==="Enter") pkgSubmit(); });
-    // "Add custom package" row (not a real app row, so the tap-gesture handlers
-    // below ignore it) — commit it on click.
-    appsList.addEventListener("click",e=>{
-      const add=e.target.closest(".pak-add"); if(add) addCustomPkg(add.dataset.add);
-    });
-
-    // gesture: short tap -> toggle spoof tick; long-press -> per-app config
-    let lpTimer=null, downPkg=null;
+    // gesture: tap -> toggle spoof tick; long-press -> per-app config.
+    //
+    // The tap is driven by `click`, not by pointerup. It used to be decided by
+    // whether the long-press timer was still pending, and the timer was killed
+    // by ANY pointermove — a finger on glass always drifts a pixel or two, so on
+    // most devices every tap was thrown away with it and the list looked inert.
+    // click is also the one event every WebUI host delivers (the basic KSU host
+    // predates Pointer Events), and the browser only emits it for a real tap:
+    // a drag that scrolls the list sends pointercancel and no click at all.
+    const SLOP=12;   // px of finger drift that still counts as a hold, not a scroll
+    let lpTimer=null, downPkg=null, downX=0, downY=0, lpFired=false;
     const pkgOf=e=>{ const it=e.target.closest(".fm-item"); return it?it.dataset.pkg:null; };
+    const clearLp=()=>{ if(lpTimer){ clearTimeout(lpTimer); lpTimer=null; } };
     appsList.addEventListener("pointerdown",e=>{
-      downPkg=pkgOf(e); if(!downPkg) return;
-      lpTimer=setTimeout(()=>{ lpTimer=null; openCfg(downPkg); },420);
+      lpFired=false; downPkg=pkgOf(e);
+      if(!downPkg) return;
+      downX=e.clientX; downY=e.clientY;
+      lpTimer=setTimeout(()=>{ lpTimer=null; lpFired=true; openCfg(downPkg); },420);
     });
-    const cancelLp=()=>{ if(lpTimer){ clearTimeout(lpTimer); lpTimer=null; } };
-    appsList.addEventListener("pointermove",cancelLp);
-    appsList.addEventListener("pointercancel",cancelLp);
-    appsList.addEventListener("pointerup",e=>{
-      if(!lpTimer) return; clearTimeout(lpTimer); lpTimer=null;
-      const pkg=pkgOf(e); if(pkg && pkg===downPkg) toggleTick(pkg);
+    appsList.addEventListener("pointermove",e=>{
+      if(!lpTimer) return;
+      if(Math.abs(e.clientX-downX)>SLOP||Math.abs(e.clientY-downY)>SLOP) clearLp();
+    });
+    appsList.addEventListener("pointercancel",clearLp);
+    appsList.addEventListener("pointerup",clearLp);
+    appsList.addEventListener("click",e=>{
+      // the "Add custom package" row carries no data-pkg, so it is never a toggle
+      const add=e.target.closest(".pak-add"); if(add){ addCustomPkg(add.dataset.add); return; }
+      if(lpFired) return;              // this press already opened the per-app config
+      const pkg=pkgOf(e); if(pkg) toggleTick(pkg);
     });
 
     // config dialog interactions
