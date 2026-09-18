@@ -1,8 +1,8 @@
 name: Nightly
 
 # Test builds, uploaded as GitHub Actions ARTIFACTS — never a release.
-# Runs on every push to main and nightly, so the artifacts are always the
-# bleeding-edge snapshot of main between releases. Releases only
+# Runs when a push actually changes what goes INTO a zip, so the artifacts are
+# the bleeding-edge snapshot of main between releases. Releases only
 # ship the three TEESimulator-RS zips; this is also where the OPTIONAL keystore
 # engines (TrickyStoreOSS -TSOSS, TEESimulator/JingMatrix -TEESIM) are built for
 # anyone who wants to try them without building locally.
@@ -19,17 +19,39 @@ name: Nightly
 # version plus the <commits>-<sha>-<buildtype> tag the rest of the TrickyStore
 # family uses - so a nightly is never mistaken for the release it was built on.
 
+# What triggers a build is an allow-list of the things a zip is made of, the way
+# Tricky-Addon gates on module/ + webui/. A README fix, a CHANGELOG entry, a
+# screenshot or the update.json commit the release workflow pushes changes no
+# byte inside any zip, and used to spend a full nine-variant run anyway.
+#
+# There is deliberately NO schedule: nothing else in this family builds on a
+# timer (the one cron in the ecosystem, PIF's autopif.yml, refreshes fingerprint
+# DATA, not builds), and a daily run here would only rebuild the same commit
+# with the same pinned upstream zips. Artifacts are kept for 90 days, so the
+# nightly.link URLs keep working through a quiet stretch on main.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - '.github/workflows/release.yml'
-      - '.github/workflows/upstream-update.yml'
-  schedule:
-    - cron: '0 2 * * *'   # daily, 02:00 UTC
-  workflow_dispatch:      # NOTE: nightly.link only follows push/schedule runs, not manual ones
+    # (kept in step with the pull_request list below — GitHub Actions ignores
+    # YAML anchors, so the two really do have to be written out twice)
+    paths:
+      - 'module/**'
+      - 'module-variants/**'
+      - 'attest/**'
+      - 'native/**'
+      - 'banner.png'
+      - 'build.sh'
+      - '.github/workflows/nightly.yml'
+  pull_request:
+    paths:
+      - 'module/**'
+      - 'module-variants/**'
+      - 'attest/**'
+      - 'native/**'
+      - 'banner.png'
+      - 'build.sh'
+      - '.github/workflows/nightly.yml'
+  workflow_dispatch:      # NOTE: nightly.link only follows push runs, not manual ones
 
 concurrency:
   group: nightly-${{ github.ref }}
@@ -110,7 +132,7 @@ jobs:
           path: artifacts/default
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-inject
         uses: actions/upload-artifact@v4
@@ -119,7 +141,7 @@ jobs:
           path: artifacts/inject
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-nopif
         uses: actions/upload-artifact@v4
@@ -128,7 +150,7 @@ jobs:
           path: artifacts/nopif
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-TSOSS
         uses: actions/upload-artifact@v4
@@ -137,7 +159,7 @@ jobs:
           path: artifacts/TSOSS
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-inject-TSOSS
         uses: actions/upload-artifact@v4
@@ -146,7 +168,7 @@ jobs:
           path: artifacts/inject-TSOSS
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-nopif-TSOSS
         uses: actions/upload-artifact@v4
@@ -155,7 +177,7 @@ jobs:
           path: artifacts/nopif-TSOSS
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-TEESIM
         uses: actions/upload-artifact@v4
@@ -164,7 +186,7 @@ jobs:
           path: artifacts/TEESIM
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-inject-TEESIM
         uses: actions/upload-artifact@v4
@@ -173,7 +195,7 @@ jobs:
           path: artifacts/inject-TEESIM
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
 
       - name: Upload AlwaysStrong-nopif-TEESIM
         uses: actions/upload-artifact@v4
@@ -182,4 +204,4 @@ jobs:
           path: artifacts/nopif-TEESIM
           include-hidden-files: true
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90

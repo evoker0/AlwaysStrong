@@ -32,7 +32,10 @@ attached to releases** — they live in the nightly builds:
  The same artifacts are on the
   [Actions tab](https://github.com/evoker0/AlwaysStrong/actions/workflows/nightly.yml)
   under the latest run (GitHub login required there). Nightlies are untested
-  snapshots of `main` and are kept for 30 days. A nightly names itself, in the
+  snapshots of `main`, built by every push that changes something a zip is made
+  of (`module/`, `module-variants/`, `attest/`, `native/`, `build.sh`) and kept
+  for 90 days — a README or CHANGELOG commit does not spend a build, and there
+  is no timer rebuilding an unchanged tree. A nightly names itself, in the
   same form the rest of the TrickyStore family uses (`v1.4.1 (245-72b2e84-release)`
   there): `v<ver> (<commits>-<sha>-nightly)` in the manager, in Action's header
   and in the WebUI, with the zip inside the artifact named
