@@ -13,7 +13,6 @@ native/**/target/
 Thumbs.db
 .vscode/
 .idea/
-.claude/
 
 # scratch / temp
 tmp_*
