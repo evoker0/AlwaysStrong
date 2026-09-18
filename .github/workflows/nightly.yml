@@ -14,6 +14,10 @@ name: Nightly
 # The artifact IS the flashable module zip (contents are uploaded unpacked).
 # or from the run's "Artifacts" section (Actions tab), or:
 #   gh run download -R evoker0/AlwaysStrong --name AlwaysStrong-TSOSS
+#
+# Its module.prop reads `version=v1.0.4 (411-06f040e-nightly)` - the release
+# version plus the <commits>-<sha>-<buildtype> tag the rest of the TrickyStore
+# family uses - so a nightly is never mistaken for the release it was built on.
 
 on:
   push:
@@ -47,14 +51,32 @@ jobs:
       - name: Use committed native binaries (skip the cargo-ndk step in CI)
         run: find native -path '*/prebuilt/*' -type f -exec touch {} +
 
+      - name: Version this snapshot apart from the release
+        # A nightly is built from whatever is on main, so it is ahead of the last
+        # tag while carrying the same version= as the release it sits on: a
+        # tester's build was indistinguishable from the released one in the
+        # manager and in bug reports. Tag it the way the rest of the TrickyStore
+        # family tags its builds - TrickyStore ships `v1.4.1 (245-72b2e84-release)`,
+        # TEESimulator `v4.0 (63-123d8ba-release)` - with `nightly` as the build
+        # type: `v1.0.4 (411-06f040e-nightly)`. Upstream also puts the commit
+        # count in versionCode; ours tracks the release and is left alone, so the
+        # next release still shows up as an update for anyone on a nightly.
+        run: |
+          set -eu
+          base=$(sed -n 's/^version=//p' module/module.prop)
+          tag="$(git rev-list --count HEAD)-$(git rev-parse --short=7 HEAD)-nightly"
+          echo "AS_BUILD_TAG=$tag"            >> "$GITHUB_ENV"
+          echo "AS_ZIPVER=${base}-${tag}"     >> "$GITHUB_ENV"
+          echo "::notice::nightly version ${base} (${tag})"
+
       - name: Build the release lines (TEESimulator-RS)
-        run: bash build.sh
+        run: bash build.sh --build-tag "$AS_BUILD_TAG"
 
       - name: Build the optional TrickyStoreOSS lines (-TSOSS)
-        run: bash build.sh --engine trickystoreoss
+        run: bash build.sh --engine trickystoreoss --build-tag "$AS_BUILD_TAG"
 
       - name: Build the optional TEESimulator (JingMatrix) lines (-TEESIM)
-        run: bash build.sh --engine teesim
+        run: bash build.sh --engine teesim --build-tag "$AS_BUILD_TAG"
 
       - name: List what was built
         run: ls -la out/
@@ -64,15 +86,18 @@ jobs:
       # flashing. Unpack each variant and upload its CONTENTS instead, so the
       # downloaded artifact is itself the flashable module zip. Artifact names
       # carry no version so the nightly.link URLs stay permanent; the version
-      # is in module.prop inside.
+      # is in module.prop inside (release version + the nightly build tag).
       - name: Unpack each variant into its own artifact folder
         run: |
           set -euo pipefail
           for z in out/AlwaysStrong-*.zip; do
-            base=$(basename "$z" .zip)          # AlwaysStrong-v1.0.4-inject-TSOSS
-            rest=${base#AlwaysStrong-}          # v1.0.4-inject-TSOSS
-            variant=${rest#*-}                  # inject-TSOSS
-            [[ "$variant" == "$rest" ]] && variant=default   # no suffix = the default zip
+            base=$(basename "$z" .zip)                  # AlwaysStrong-<ver>-inject-TSOSS
+            # The version in the name is `<ver>-<commits>-<sha>-nightly`, so strip
+            # the whole known version instead of up to the first dash.
+            rest=${base#"AlwaysStrong-${AS_ZIPVER}"}    # -inject-TSOSS
+            [[ "$rest" == "$base" ]] && { echo "unexpected zip name: $base" >&2; exit 1; }
+            variant=${rest#-}                           # inject-TSOSS
+            [[ -z "$variant" ]] && variant=default      # no suffix = the default zip
             mkdir -p "artifacts/$variant"
             unzip -q "$z" -d "artifacts/$variant"
           done

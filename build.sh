@@ -39,6 +39,13 @@
 #   ./build.sh --pif v16                    # override the PIF tag  (needs --variant)
 #   ./build.sh --pif-file PATH              # use a LOCAL PIF zip   (needs --variant)
 #   ./build.sh --clean                      # wipe build/ first
+#   ./build.sh --build-tag '411-06f040e-nightly'
+#                                           # mark a NON-release build the way the rest of
+#                                           # the TrickyStore family does: module.prop reads
+#                                           # `version=v1.0.4 (411-06f040e-nightly)` and the
+#                                           # zip is AlwaysStrong-v1.0.4-411-06f040e-nightly.zip.
+#                                           # versionCode untouched. CI passes
+#                                           # <commits>-<sha>-nightly.
 #
 # Output (-TSOSS = TrickyStoreOSS, -TEESIM = TEESimulator/JingMatrix; plain = RS):
 #   out/AlwaysStrong-<ver>.zip               PlayIntegrityFork          + TEESimulator-RS
@@ -95,6 +102,7 @@ PIF_FILE=""
 PIF_TAG_OVERRIDE=""
 PIF_ASSET_OVERRIDE=""
 VARIANTS_REQUESTED=""
+BUILD_TAG=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -113,6 +121,7 @@ while [[ $# -gt 0 ]]; do
         --pif-file)   PIF_FILE="$2"; shift 2 ;;
         --clean)      DO_CLEAN=1; shift ;;
         --variant)    VARIANTS_REQUESTED="$2"; shift 2 ;;
+        --build-tag)  BUILD_TAG="$2"; shift 2 ;;
         -h|--help)
             sed -n '2,/^$/p' "$0"
             exit 0
@@ -131,11 +140,23 @@ TSOSS_ASSET=$(strip_cr "$TSOSS_ASSET")
 TEESIM_TAG=$(strip_cr "$TEESIM_TAG")
 TEESIM_ASSET=$(strip_cr "$TEESIM_ASSET")
 ENGINE_KIND=$(strip_cr "$ENGINE_KIND")
+BUILD_TAG=$(strip_cr "$BUILD_TAG")
 
 case "$ENGINE_KIND" in
     tee|trickystoreoss|teesim) ;;
     *) echo "Unknown --engine '$ENGINE_KIND' (use: tee | trickystoreoss | teesim)" >&2; exit 1 ;;
 esac
+
+# The tag lands in module.prop and in the zip file name, so keep it to characters
+# that are safe in both, and never let it start with '-' (that would read as the
+# start of the variant part of the zip name).
+if [[ -n "$BUILD_TAG" ]]; then
+    case "$BUILD_TAG" in
+        *[!A-Za-z0-9._-]*|-*)
+            echo "Bad --build-tag '$BUILD_TAG' (allowed: A-Z a-z 0-9 . _ -)" >&2
+            exit 1 ;;
+    esac
+fi
 
 # ---------- Paths ----------
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -512,6 +533,22 @@ if [[ -f "$VDIR/module.prop.override" ]]; then
     green "    applied module.prop overrides"
 fi
 
+# 1a3) Mark a non-release build, in the form the rest of the TrickyStore family
+#      uses: `version=v1.0.4 (411-06f040e-nightly)`, like TrickyStore's own
+#      `v1.4.1 (245-72b2e84-release)` or TEESimulator's `v4.0 (63-123d8ba-release)`.
+#      It shows up in the manager, in action.sh's header and in the WebUI chip, so a
+#      bug report names the exact build it came from. versionCode is deliberately
+#      left alone — upstream puts the commit count there, ours tracks the release,
+#      and a nightly tester should still be offered the next release by their manager.
+if [[ -n "$BUILD_TAG" ]]; then
+    awk -v tag="$BUILD_TAG" '
+        /^version=/ && !seen { print $0 " (" tag ")"; seen=1; next }
+        { print }
+    ' "$STAGE/module.prop" > "$STAGE/module.prop.new" \
+        && mv "$STAGE/module.prop.new" "$STAGE/module.prop"
+    green "    version -> $(sed -n 's/^version=//p' "$STAGE/module.prop")"
+fi
+
 # 1b) Ship banner.png inside the module so the manager shows it locally
 #     (module.prop: banner=/data/adb/modules/tricky_store/banner.png) instead of
 #     hot-linking raw.githubusercontent.com. customize.sh extracts it on install.
@@ -857,6 +894,10 @@ done
   [[ "$ENGINE_KIND" == "trickystoreoss" ]] && ATTEST_SUFFIX="-TSOSS"
   [[ "$ENGINE_KIND" == "teesim" ]]         && ATTEST_SUFFIX="-TEESIM"
   VERSION=$(grep '^version=' "$STAGE/module.prop" | cut -d= -f2)
+  # `v1.0.4 (411-06f040e-nightly)` names the zip
+  # AlwaysStrong-v1.0.4-411-06f040e-nightly.zip, the way upstream names theirs
+  # (Tricky-Store-v1.4.1-245-72b2e84-release.zip).
+  VERSION=${VERSION/ (/-}; VERSION=${VERSION%)}
   OUT_ZIP="$OUT/AlwaysStrong-${VERSION}${ZIP_SUFFIX}${ATTEST_SUFFIX}.zip"
   rm -f "$OUT_ZIP"
 

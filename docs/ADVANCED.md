@@ -32,7 +32,15 @@ attached to releases** — they live in the nightly builds:
  The same artifacts are on the
   [Actions tab](https://github.com/evoker0/AlwaysStrong/actions/workflows/nightly.yml)
   under the latest run (GitHub login required there). Nightlies are untested
-  snapshots of `main` and are kept for 30 days.
+  snapshots of `main` and are kept for 30 days. A nightly names itself, in the
+  same form the rest of the TrickyStore family uses (`v1.4.1 (245-72b2e84-release)`
+  there): `v<ver> (<commits>-<sha>-nightly)` in the manager, in Action's header
+  and in the WebUI, with the zip inside the artifact named
+  `AlwaysStrong-<ver>-<commits>-<sha>-nightly.zip`. So the exact commit it was
+  built from is always visible and it can never be mistaken for the release of
+  the same `<ver>`. The `versionCode` stays the release's (upstream puts the
+  commit count there), so your manager still offers the next release as an
+  update.
 - **Build locally** — `./build.sh --engine trickystoreoss` or `./build.sh --engine teesim`
   (see *Building* below).
 
@@ -70,6 +78,12 @@ unzip, zip, sha256sum.
 ./build.sh --engine teesim              # the three lines on TEESimulator/JingMatrix (-TEESIM)
 ./build.sh --clean                      # wipe build/ and rebuild
 ./build.sh --tee v6.0.1-307             # override the TEESimulator-RS tag
+./build.sh --build-tag '411-abc1234-test'
+                                        # mark it as NOT the release: module.prop reads
+                                        # `v1.0.4 (411-abc1234-test)` and the zip becomes
+                                        # AlwaysStrong-v1.0.4-411-abc1234-test.zip
+                                        # (versionCode untouched). CI passes
+                                        # <commits>-<sha>-nightly.
 ```
 
 Output lands in `out/`:
