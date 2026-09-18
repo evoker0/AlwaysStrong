@@ -81,7 +81,13 @@ body{
   max-width:520px;margin:0 auto;position:relative;
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
+  /* This is a control panel, not a document: a long-press is our per-app config
+     gesture, and letting the WebView answer it with selection handles and a
+     Copy / Share bar drops that menu straight over the dialog it just opened.
+     Text fields opt back in below. */
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
 }
+input,textarea{-webkit-user-select:text;user-select:text}
 
 /* ---------------- header ---------------- */
 /* keep clear of the two fixed buttons (theme + language) top-right */
