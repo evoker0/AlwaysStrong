@@ -18,6 +18,9 @@
 #     logs/       autopif.log, action-boot.log, action-reset.log
 #     tmp/        downloads in flight, engine loop pids
 #
+# Anything new belongs in one of these as a LINE, not as another file: the
+# directory next door is the engine's and this one should stay readable.
+#
 # Use it either way:
 #   . "$MODPATH/as_store.sh"        # helpers: as_on, as_get, as_set, st_get, ...
 #   sh as_store.sh get auto_fp      # or as a command, which is what the WebUI calls
@@ -111,7 +114,53 @@ as_get() {
     return 0
 }
 
-as_set() { _kv_set "$AS_CONF" "$1" "$2"; }
+# _proc_start <pid> — the process's start time from /proc/<pid>/stat. The comm
+# field is wrapped in parentheses and can itself contain spaces, so everything
+# up to the last ')' is dropped before counting fields; start time is then the
+# 20th.
+_proc_start() {
+    _ps=$(cat "/proc/$1/stat" 2>/dev/null) || return 0
+    _ps=${_ps##*) }
+    # shellcheck disable=SC2086
+    set -- $_ps
+    echo "${20}"
+    unset _ps
+    return 0
+}
+
+# as_notify — tell a running refresh loop that the interval changed, so the new
+# one starts counting from now instead of after the old one runs out. Called on
+# every interval write, and by hand through `sh as_store.sh reload` after the
+# file has been edited outside the module - nothing polls this file.
+#
+# The loop leaves "<pid> <start time>" in state as `refresh=` and traps CONT. A
+# stale file from an earlier boot can name a pid the system has since handed to
+# someone else, so the start time has to match too - a pid alone is not an
+# identity. CONT is also the one signal whose default action harms nothing, in
+# case something slips through anyway (USR1 would terminate it).
+as_notify() {
+    _line=$(st_get refresh)
+    _p=${_line%% *}
+    _t=${_line#* }
+    [ "$_t" = "$_p" ] && _t=""
+    case "$_p" in ''|*[!0-9]*) unset _line _p _t; return 0 ;; esac
+    if [ -n "$_t" ] && [ "$_t" != "$(_proc_start "$_p")" ]; then
+        unset _line _p _t; return 0
+    fi
+    kill -CONT "$_p" 2>/dev/null || :
+    unset _line _p _t
+    return 0
+}
+
+# A write goes through as_seed afterwards, so the file keeps one line per
+# setting in the order as_default lists them instead of drifting as changed
+# keys pile up at the end - this file is meant to be read by a person.
+as_set() {
+    _kv_set "$AS_CONF" "$1" "$2"
+    as_seed
+    [ "$1" = interval_sec ] && as_notify
+    return 0
+}
 as_del() { _kv_del "$AS_CONF" "$1"; }
 
 # as_on <key> — true when the feature is on. `as_on auto_fp && do_the_thing`
@@ -227,6 +276,9 @@ as_migrate() {
           "$_old/.ts_loop" "$_old/.teesim_loop" 2>/dev/null
     rm -f "$_old"/.keybox_fetch.* "$_old"/.pif_native.* "$_old"/.pif_asfetch.* \
           "$_old"/.netcheck.* 2>/dev/null
+    # and from our own tmp/: the stamp an earlier build polled against, which
+    # nothing reads now that the loop is told about a change instead
+    rm -f "$AS_TMP/interval.stamp" "$AS_TMP/refresh.pid" 2>/dev/null
     as_seed
     unset _old _m _f _s _l
     return 0
@@ -259,6 +311,7 @@ as_cli() {
             # every setting with its effective value — what the WebUI paints
             # from, in one shell round trip
             for _k in $AS_KEYS; do echo "$_k=$(as_get "$_k")"; done ;;
+        reload)     as_notify ;;   # like `nginx -s reload`: tell the loop to re-read
         migrate)    as_init; as_migrate; as_seed ;;
         seed)       as_seed ;;
         init)       as_init ;;

@@ -153,6 +153,13 @@ directory beside them:
   tmp/        downloads in flight, engine loop pids
 ```
 
+Editing `config` by hand works, but nothing watches the file — same as nginx,
+where the daemon keeps the old config until `nginx -s reload`. Here that is
+`sh /data/adb/modules/tricky_store/as_store.sh reload`, which tells the running
+refresh loop to drop its current wait and start the new interval now; without it
+a hand-edited interval takes effect on the next cycle. Every change made through
+the WebUI, the Action or `as_store.sh set` sends that signal by itself.
+
 A setting that is at its default is simply not in the file, so deleting `config`
 *is* "reset to defaults". Settings are named for what they do (`auto_fp=1` means
 the fingerprint refreshes itself) instead of the old marker files, which were

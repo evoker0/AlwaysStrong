@@ -34,6 +34,9 @@ esac
 mkdir -p "$AS_LOGS" 2>/dev/null
 rm -f "$AS_CONF" "$AS_SPOOF" "$AS_PKGS" 2>/dev/null
 as_seed
+# the interval is back at its default too, so tell the refresh loop - it is
+# otherwise still waiting out whatever was set before the reset
+as_notify
 
 # The status prefix is default-on again; the next status fetch writes it back.
 # Re-run the Action in the background, exactly like the first boot does: under

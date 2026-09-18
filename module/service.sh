@@ -337,10 +337,57 @@ fi
 # kick running banking apps for cosmetic refreshes.
 {
     export MODPATH="$MODDIR"
+    # Interval is user-configurable from the WebUI. Default 1h, floor 60s so a
+    # misconfigured 0/-1/garbage can't busy-spin the loop (as_int clamps).
+    #
+    # The wait is counted in slices rather than slept in one go: `sleep "$(as_int
+    # interval_sec)"` read the setting once, at the START of the wait, so turning
+    # 60 minutes into 1 still sat out the rest of the hour and the new interval
+    # looked like it had been ignored. A slice is at most 60s — the shortest
+    # interval that can be set — so a change is picked up within a minute, and
+    # the time already waited counts towards the new interval, which makes a
+    # shortened one fire at once.
+    #
+    # The interval is read once, when the wait starts - and the wait is dropped
+    # the moment it changes, because whoever writes the setting tells us
+    # (as_store.sh's as_notify -> CONT). It is the way nginx handles a changed
+    # config: the daemon does not watch the file, `nginx -s reload` tells it.
+    # Nothing is polled here, so an idle hour costs exactly one wakeup, as it
+    # did before any of this.
+    #
+    # The sleep runs in the background and is waited on: a shell only runs a
+    # trap once the foreground child is done, so a plain `sleep 3600` would
+    # swallow the signal for the rest of the hour - the very thing being fixed.
+    #
+    # A config edited by hand sends no signal; `sh as_store.sh reload` does, and
+    # without it the change lands on the next cycle.
+    RESET=0
+    # In a background block $$ is the PARENT shell's pid and `sh -c 'echo $PPID'`
+    # answers for whichever shell the command substitution forked - both name the
+    # wrong process, and the signal then goes to a shell with no trap for it. The
+    # first field of /proc/self/stat is read by a builtin in THIS process.
+    read LOOP_PID _ < /proc/self/stat 2>/dev/null || LOOP_PID=$$
+    # the pid plus its start time (a pid on its own is not an identity, the
+    # system reuses them), kept as one line in the state file rather than a file
+    # of its own
+    st_set refresh "$LOOP_PID $(_proc_start "$LOOP_PID")"
+    # CONT rather than USR1: should the stored pid ever name something else, the
+    # default action for CONT is to carry on, while USR1 terminates.
+    #
+    # RESET is set only when there IS a wait to interrupt. A signal that arrives
+    # while the refresh itself is running has nothing to cancel - the next wait
+    # reads the new interval by itself - and leaving the flag set would have made
+    # that wait end in a `continue`, silently skipping one whole cycle.
+    trap '[ -n "$SLEEP_PID" ] && { RESET=1; kill "$SLEEP_PID" 2>/dev/null; }' CONT
     while true; do
-        # Interval is user-configurable from the WebUI. Default 1h, floor 60s
-        # so a misconfigured 0/-1/garbage can't busy-spin the loop (as_int clamps).
-        sleep "$(as_int interval_sec 60)"
+        sleep "$(as_int interval_sec 60)" &
+        SLEEP_PID=$!
+        wait "$SLEEP_PID" 2>/dev/null
+        SLEEP_PID=""
+        if [ "$RESET" = 1 ]; then
+            RESET=0          # interval changed: drop this wait, start the new one now
+            continue
+        fi
         if as_on auto_fp && [ "${ENGINE:-none}" != "none" ]; then
             FP_DONE=0
             if [ -x "$MODDIR/pif_native_fetch.sh" ]; then
