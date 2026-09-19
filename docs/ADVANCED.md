@@ -37,8 +37,9 @@ attached to releases** — they live in the nightly builds:
   for 90 days — a README or CHANGELOG commit does not spend a build, and there
   is no timer rebuilding an unchanged tree. A nightly names itself, in the
   same form the rest of the TrickyStore family uses (`v1.4.1 (245-72b2e84-release)`
-  there): `v<ver> (<commits>-<sha>-nightly)` in the manager, in Action's header
-  and in the WebUI, with the zip inside the artifact named
+  there): `v<ver> (<commits>-<sha>-nightly)` in the manager, in the WebUI and in
+  a collected log — the Action screen keeps the plain `v<ver>`, it has three
+  lines to work with — with the zip inside the artifact named
   `AlwaysStrong-<ver>-<commits>-<sha>-nightly.zip`. So the exact commit it was
   built from is always visible and it can never be mistaken for the release of
   the same `<ver>`. The `versionCode` stays the release's (upstream puts the

@@ -51,6 +51,10 @@ CONFIG_DIR=/data/adb/tricky_store
 mkdir -p "$AS_LOGS" 2>/dev/null
 LINE="========================="
 VER=$(grep -m1 '^version=' "$MODPATH/module.prop" 2>/dev/null | cut -d= -f2-)
+# A non-release build carries its tag in module.prop - v1.0.4 (74-abc1234-nightly)
+# - which the manager, the WebUI and a collected log all show. This header is
+# three lines on a phone screen, so it keeps the plain version.
+VER=${VER%% (*}
 
 row() { echo "    $1   $2"; }
 
