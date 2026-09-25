@@ -26,7 +26,7 @@ To use this module you need one of the following (latest versions), with a Zygis
 - [KernelSU](https://github.com/tiann/KernelSU) or [SukiSU Ultra](https://github.com/SukiSU-Ultra/SukiSU-Ultra) with [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) or [ReZygisk](https://github.com/PerformanC/ReZygisk) or [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) module installed
 - [APatch](https://github.com/bmax121/APatch) with [Zygisk Next](https://github.com/Dr-TSNG/ZygiskNext) or [ReZygisk](https://github.com/PerformanC/ReZygisk) or [NeoZygisk](https://github.com/JingMatrix/NeoZygisk) module installed
 
-Android 10+ (SDK 29) is required.
+Android 13+ (SDK 31) is required. (Android 12 and below won't pass more than basic due to new Google check mechanism)
 
 ## Join group / channel
 
